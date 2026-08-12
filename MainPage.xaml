@@ -1,0 +1,47 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="JumpRopeApp.MainPage"
+             x:Name="RootPage"
+             BackgroundColor="{Binding Source={x:Reference RootPage}, Path=PageBackgroundColor}">
+
+    <Grid Padding="24">
+        <!-- 1. SETUP / CONFIGURATION SCREEN -->
+        <VerticalStackLayout x:Name="ConfigView" Spacing="16" VerticalOptions="Center">
+            <Label Text="Jump Rope Routine" FontSize="28" FontAttributes="Bold" HorizontalOptions="Center" />
+
+            <Entry x:Name="JumpSecsEntry" Text="30" Keyboard="Numeric" Placeholder="Jump Duration (sec)" />
+            <Entry x:Name="RestSecsEntry" Text="15" Keyboard="Numeric" Placeholder="Rest Duration (sec)" />
+            <Entry x:Name="TargetSetsEntry" Text="5" Keyboard="Numeric" Placeholder="Target Sets" />
+
+            <Button Text="START WORKOUT" Clicked="OnStartWorkoutClicked" HeightRequest="56" Margin="0,16,0,0" />
+        </VerticalStackLayout>
+
+        <!-- 2. ACTIVE WORKOUT TIMER SCREEN -->
+        <VerticalStackLayout x:Name="ActiveView" IsVisible="False" Spacing="20" VerticalOptions="Center">
+            <Label x:Name="SetInfoLabel" Text="Set 1 of 5" FontSize="22" HorizontalOptions="Center" TextColor="White" />
+            <Label x:Name="StatusLabel" Text="JUMP!" FontSize="48" FontAttributes="Bold" HorizontalOptions="Center" TextColor="White" />
+            <Label x:Name="TimerLabel" Text="30" FontSize="96" FontAttributes="Bold" HorizontalOptions="Center" TextColor="White" />
+
+            <Button Text="END WORKOUT" Clicked="OnEndWorkoutClicked" BackgroundColor="Red" TextColor="White" HeightRequest="56" />
+        </VerticalStackLayout>
+
+        <!-- 3. SUMMARY SCREEN -->
+        <VerticalStackLayout x:Name="SummaryView" IsVisible="False" Spacing="16" VerticalOptions="Center">
+            <Label Text="Workout Complete!" FontSize="28" FontAttributes="Bold" HorizontalOptions="Center" />
+
+            <Border Padding="16">
+                <VerticalStackLayout Spacing="8">
+                    <Label x:Name="CompletedSetsLabel" Text="Sets Completed: 5" FontSize="18" />
+                    <Label x:Name="TotalJumpsLabel" Text="Total Jumps Recorded: 0" FontSize="20" FontAttributes="Bold" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Entry x:Name="JumpsLoggedEntry" Keyboard="Numeric" Placeholder="Log Total Jumps Made" />
+            <Button Text="Add to Total Count" Clicked="OnAddJumpsClicked" />
+
+            <Button Text="NEW WORKOUT" Clicked="OnNewWorkoutClicked" Margin="0,16,0,0" HeightRequest="56" />
+        </VerticalStackLayout>
+    </Grid>
+
+</ContentPage>
