@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="JumpRopeApp.StatsPage"
+             BackgroundColor="{AppThemeBinding Light=#F8F9FA, Dark=#121212}"
+             Title="Analytics">
+
+    <ScrollView Padding="20">
+        <VerticalStackLayout Spacing="20" MaximumWidthRequest="500">
+
+            <!-- Header Card -->
+            <Border BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1E1E2E}" 
+                    Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#2A2A3D}"
+                    StrokeShape="RoundRectangle 16"
+                    Padding="20">
+                <VerticalStackLayout Spacing="6">
+                    <Label Text="Performance Overview" 
+                           FontSize="22" 
+                           FontAttributes="Bold" 
+                           HorizontalOptions="Center" 
+                           TextColor="{AppThemeBinding Light=#1A1A1A, Dark=#FFFFFF}" />
+                    <Label Text="Lifetime workout statistics and performance metrics" 
+                           FontSize="13" 
+                           HorizontalOptions="Center" 
+                           TextColor="{AppThemeBinding Light=#6C757D, Dark=#A0A0B2}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Metrics Grid -->
+            <Grid ColumnDefinitions="*, *" RowDefinitions="Auto, Auto" ColumnSpacing="12" RowSpacing="12">
+
+                <!-- Lifetime / All-Time Jumps -->
+                <Border Grid.Row="0" Grid.Column="0" 
+                        BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1E1E2E}" 
+                        Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#2A2A3D}" 
+                        StrokeShape="RoundRectangle 16" 
+                        Padding="16">
+                    <VerticalStackLayout Spacing="6">
+                        <Label Text="TOTAL JUMPS" FontSize="11" FontAttributes="Bold" TextColor="#6366F1" />
+                        <Label x:Name="AllTimeJumpsLabel" Text="0" FontSize="26" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#1A1A1A, Dark=#FFFFFF}" />
+                        <!-- Fallback mapping alias if referenced elsewhere -->
+                        <Label x:Name="LifetimeJumpsLabel" IsVisible="False" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- Total Workouts -->
+                <Border Grid.Row="0" Grid.Column="1" 
+                        BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1E1E2E}" 
+                        Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#2A2A3D}" 
+                        StrokeShape="RoundRectangle 16" 
+                        Padding="16">
+                    <VerticalStackLayout Spacing="6">
+                        <Label Text="WORKOUTS" FontSize="11" FontAttributes="Bold" TextColor="#10B981" />
+                        <Label x:Name="TotalWorkoutsLabel" Text="0" FontSize="26" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#1A1A1A, Dark=#FFFFFF}" />
+                        <!-- Fallback mapping alias -->
+                        <Label x:Name="TotalSessionsLabel" IsVisible="False" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- Total Sets -->
+                <Border Grid.Row="1" Grid.Column="0" 
+                        BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1E1E2E}" 
+                        Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#2A2A3D}" 
+                        StrokeShape="RoundRectangle 16" 
+                        Padding="16">
+                    <VerticalStackLayout Spacing="6">
+                        <Label Text="SETS COMPLETED" FontSize="11" FontAttributes="Bold" TextColor="#F59E0B" />
+                        <Label x:Name="TotalSetsLabel" Text="0" FontSize="26" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#1A1A1A, Dark=#FFFFFF}" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- Avg Jumps / Session -->
+                <Border Grid.Row="1" Grid.Column="1" 
+                        BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1E1E2E}" 
+                        Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#2A2A3D}" 
+                        StrokeShape="RoundRectangle 16" 
+                        Padding="16">
+                    <VerticalStackLayout Spacing="6">
+                        <Label Text="AVG JUMPS/SESSION" FontSize="11" FontAttributes="Bold" TextColor="#EC4899" />
+                        <Label x:Name="AvgJumpsLabel" Text="0" FontSize="26" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#1A1A1A, Dark=#FFFFFF}" />
+                    </VerticalStackLayout>
+                </Border>
+
+            </Grid>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
