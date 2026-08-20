@@ -91,9 +91,10 @@ public class DatabaseService
         {
             await _database.InsertAsync(record);
         }
-
     }
-    public async Task SaveWorkoutAsync(int sets, int jumps, int jumpSecs = 0, int restSecs = 0)
+
+    // Fixed Overload Method
+    public async Task SaveWorkoutAsync(int sets, int jumps, int jumpSecs = 0, int restSecs = 0, string workoutType = "Basic Jumps")
     {
         var record = new WorkoutRecord
         {
@@ -101,7 +102,8 @@ public class DatabaseService
             SetsCompleted = sets,
             TotalJumps = jumps,
             JumpSecs = jumpSecs,
-            RestSecs = restSecs
+            RestSecs = restSecs,
+            WorkoutType = workoutType
         };
 
         await SaveWorkoutAsync(record);

@@ -13,17 +13,13 @@
             <!-- ========================================== -->
             <VerticalStackLayout x:Name="ConfigView" IsVisible="True" Spacing="20">
 
-                <!-- Header Card -->
+                <!-- Header Card with App Logo -->
                 <Border BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1E1E2E}" 
                         Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#2A2A3D}"
                         StrokeShape="RoundRectangle 16"
                         Padding="20">
-                    <VerticalStackLayout Spacing="6">
-                        <Label Text="Workout Setup" 
-                               FontSize="22" 
-                               FontAttributes="Bold" 
-                               HorizontalOptions="Center" 
-                               TextColor="{AppThemeBinding Light=#1A1A1A, Dark=#FFFFFF}" />
+                    <VerticalStackLayout Spacing="8">
+                        <!-- Logo Graphic -->
                         <Label Text="Configure your intervals or pick a preset routine" 
                                FontSize="13" 
                                HorizontalOptions="Center" 
@@ -89,6 +85,33 @@
                     </VerticalStackLayout>
                 </Border>
 
+                <!-- Fitness Set Selector -->
+                <Border BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1E1E2E}" 
+                        Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#2A2A3D}"
+                        StrokeShape="RoundRectangle 16"
+                        Padding="16">
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="SELECT FITNESS SET" 
+                               FontSize="12" 
+                               FontAttributes="Bold" 
+                               TextColor="#6366F1" />
+
+                        <Picker x:Name="WorkoutTypePicker"
+                                Title="Choose Workout Type"
+                                TextColor="{AppThemeBinding Light=#1A1A1A, Dark=#FFFFFF}"
+                                SelectedIndexChanged="OnWorkoutTypeChanged">
+                            <Picker.ItemsSource>
+                                <x:Array Type="{x:Type x:String}">
+                                    <x:String>Basic Jumps</x:String>
+                                    <x:String>HIIT Speed Sets (20s / 10s)</x:String>
+                                    <x:String>Skill Sets (Double Unders)</x:String>
+                                    <x:String>Full-Body Mixed Circuit</x:String>
+                                </x:Array>
+                            </Picker.ItemsSource>
+                        </Picker>
+                    </VerticalStackLayout>
+                </Border>
+
                 <!-- Presets Section -->
                 <Border BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1E1E2E}" 
                         Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#2A2A3D}"
@@ -120,9 +143,8 @@
                         FontSize="16" />
             </VerticalStackLayout>
 
-
             <!-- ========================================== -->
-            <!-- 2. ACTIVE VIEW (Live Timer Screen)        -->
+            <!-- 2. ACTIVE VIEW (Live Timer Screen)         -->
             <!-- ========================================== -->
             <VerticalStackLayout x:Name="ActiveView" IsVisible="False" Spacing="24" VerticalOptions="Center">
                 <Border BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1E1E2E}" 
@@ -146,7 +168,6 @@
                         HeightRequest="50" 
                         FontAttributes="Bold" />
             </VerticalStackLayout>
-
 
             <!-- ========================================== -->
             <!-- 3. SUMMARY VIEW (Save & Exit Screen)      -->
