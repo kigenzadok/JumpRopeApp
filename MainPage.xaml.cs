@@ -1,349 +1,286 @@
-﻿using JumpRopeApp.Services;
-using Microsoft.Maui.Controls;
-using Microsoft.Maui.Devices;
-using Microsoft.Maui.Graphics;
-using Plugin.Maui.Audio;
+﻿using JumpRopeApp.Models;
 using System;
-using System.Diagnostics;
-using System.Threading.Tasks;
+using Microsoft.Maui.Controls;
 
 namespace JumpRopeApp;
 
 public partial class MainPage : ContentPage
 {
-    private System.Timers.Timer? _timer;
-    private int _timeRemaining;
-    private int _currentSet;
-    private int _totalSets;
-    private int _jumpTimeSecs;
-    private int _restTimeSecs;
-    private int _totalJumpsLogged = 0;
+    private readonly DatabaseService _dbService;
 
-    private IAudioPlayer? _beepPlayer;
-    private readonly DatabaseService _dbService = new();
+    // Timer & Interval State Variables
+    private int _jumpSecs = 30;
+    private int _restSecs = 15;
+    private int _targetSets = 5;
 
-    public static readonly BindableProperty PageBackgroundColorProperty =
-        BindableProperty.Create(nameof(PageBackgroundColor), typeof(Color), typeof(MainPage), Colors.White);
+    private int _currentSet = 1;
+    private int _secondsRemaining = 0;
+    private bool _isJumpInterval = true;
+    private bool _isTimerRunning = false;
 
-    public Color PageBackgroundColor
-    {
-        get => (Color)GetValue(PageBackgroundColorProperty);
-        set => SetValue(PageBackgroundColorProperty, value);
-    }
+    private int _totalJumpsInWorkout = 0;
 
-    private readonly JumpDetectorService _jumpDetector = new();
-    private int _liveJumpCount = 0;
-    private bool _isJumpInterval = true; // Set to true when user is in JUMP interval (not REST)
     public MainPage()
     {
         InitializeComponent();
-        BindingContext = this;
-
-        // Force default text on load if empty
-        if (string.IsNullOrWhiteSpace(JumpSecsLabel.Text)) JumpSecsLabel.Text = "30";
-        if (string.IsNullOrWhiteSpace(RestSecsLabel.Text)) RestSecsLabel.Text = "15";
-        if (string.IsNullOrWhiteSpace(TargetSetsLabel.Text)) TargetSetsLabel.Text = "5";
-        _jumpDetector.JumpDetected += OnJumpDetected;
-        LoadAudioSafely();
+        _dbService = new DatabaseService();
+        UpdateConfigUI();
     }
 
-    private async void LoadAudioSafely()
-    {
-        try
-        {
-            if (await FileSystem.AppPackageFileExistsAsync("beep.mp3"))
-            {
-                using var stream = await FileSystem.OpenAppPackageFileAsync("beep.mp3");
-                _beepPlayer = AudioManager.Current.CreatePlayer(stream);
-            }
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"Audio loading bypassed: {ex.Message}");
-        }
-    }
-
-    private void TriggerTransitionAlert()
-    {
-        try
-        {
-            if (_beepPlayer != null)
-            {
-                _beepPlayer.Play();
-            }
-
-            if (HapticFeedback.Default.IsSupported)
-            {
-                HapticFeedback.Default.Perform(HapticFeedbackType.Click);
-            }
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"Haptic/Audio error ignored: {ex.Message}");
-        }
-    }
-
-    // --- INCREMENT / DECREMENT BUTTONS ---
-
-    private void OnDecreaseJumpClicked(object sender, EventArgs e)
-    {
-        if (int.TryParse(JumpSecsLabel.Text, out var val) && val > 5)
-            JumpSecsLabel.Text = (val - 5).ToString();
-    }
+    // ==========================================
+    // 1. INTERVAL CONFIGURATION BUTTON HANDLERS
+    // ==========================================
 
     private void OnIncreaseJumpClicked(object sender, EventArgs e)
     {
-        if (int.TryParse(JumpSecsLabel.Text, out var val))
-            JumpSecsLabel.Text = (val + 5).ToString();
+        _jumpSecs += 5;
+        UpdateConfigUI();
     }
 
-    private void OnDecreaseRestClicked(object sender, EventArgs e)
+    private void OnDecreaseJumpClicked(object sender, EventArgs e)
     {
-        if (int.TryParse(RestSecsLabel.Text, out var val) && val > 0)
-            RestSecsLabel.Text = (val - 5).ToString();
+        if (_jumpSecs > 5) _jumpSecs -= 5;
+        UpdateConfigUI();
     }
 
     private void OnIncreaseRestClicked(object sender, EventArgs e)
     {
-        if (int.TryParse(RestSecsLabel.Text, out var val))
-            RestSecsLabel.Text = (val + 5).ToString();
+        _restSecs += 5;
+        UpdateConfigUI();
     }
 
-    private void OnDecreaseSetsClicked(object sender, EventArgs e)
+    private void OnDecreaseRestClicked(object sender, EventArgs e)
     {
-        if (int.TryParse(TargetSetsLabel.Text, out var val) && val > 1)
-            TargetSetsLabel.Text = (val - 1).ToString();
+        if (_restSecs > 5) _restSecs -= 5;
+        UpdateConfigUI();
     }
 
     private void OnIncreaseSetsClicked(object sender, EventArgs e)
     {
-        if (int.TryParse(TargetSetsLabel.Text, out var val))
-            TargetSetsLabel.Text = (val + 1).ToString();
+        _targetSets++;
+        UpdateConfigUI();
     }
 
-    // --- PRESET ROUTINE BUTTONS ---
-
-    private void ApplyPreset(int jumpSecs, int restSecs, int totalSets)
+    private void OnDecreaseSetsClicked(object sender, EventArgs e)
     {
-        JumpSecsLabel.Text = jumpSecs.ToString();
-        RestSecsLabel.Text = restSecs.ToString();
-        TargetSetsLabel.Text = totalSets.ToString();
-
-        TriggerTransitionAlert();
+        if (_targetSets > 1) _targetSets--;
+        UpdateConfigUI();
     }
 
-    private void OnPresetBeginnerClicked(object sender, EventArgs e) => ApplyPreset(20, 20, 5);
-    private void OnPresetHIITClicked(object sender, EventArgs e) => ApplyPreset(40, 20, 8);
-    private void OnPresetTabataClicked(object sender, EventArgs e) => ApplyPreset(20, 10, 8);
-    private void OnPresetEnduranceClicked(object sender, EventArgs e) => ApplyPreset(60, 15, 10);
+    private void UpdateConfigUI()
+    {
+        JumpSecsLabel.Text = _jumpSecs.ToString();
+        RestSecsLabel.Text = _restSecs.ToString();
+        TargetSetsLabel.Text = _targetSets.ToString();
+    }
 
-    // --- WORKOUT CONTROL LOGIC ---
+    // ==========================================
+    // 2. FITNESS SETS & PRESETS SELECTION
+    // ==========================================
+
+    private void OnWorkoutTypeChanged(object sender, EventArgs e)
+    {
+        if (WorkoutTypePicker.SelectedIndex == -1) return;
+
+        string selectedType = WorkoutTypePicker.SelectedItem?.ToString() ?? string.Empty;
+
+        switch (selectedType)
+        {
+            case "HIIT Speed Sets (20s / 10s)":
+                _jumpSecs = 20;
+                _restSecs = 10;
+                _targetSets = 8;
+                break;
+            case "Skill Sets (Double Unders)":
+                _jumpSecs = 45;
+                _restSecs = 15;
+                _targetSets = 5;
+                break;
+            case "Full-Body Mixed Circuit":
+                _jumpSecs = 60;
+                _restSecs = 30;
+                _targetSets = 4;
+                break;
+            default: // Basic Jumps
+                _jumpSecs = 30;
+                _restSecs = 15;
+                _targetSets = 5;
+                break;
+        }
+
+        UpdateConfigUI();
+    }
+
+    private void OnPresetBeginnerClicked(object sender, EventArgs e)
+    {
+        _jumpSecs = 20;
+        _restSecs = 20;
+        _targetSets = 5;
+        WorkoutTypePicker.SelectedIndex = 0; // Basic Jumps
+        UpdateConfigUI();
+    }
+
+    private void OnPresetHIITClicked(object sender, EventArgs e)
+    {
+        _jumpSecs = 30;
+        _restSecs = 15;
+        _targetSets = 8;
+        WorkoutTypePicker.SelectedIndex = 1; // HIIT
+        UpdateConfigUI();
+    }
+
+    private void OnPresetTabataClicked(object sender, EventArgs e)
+    {
+        _jumpSecs = 20;
+        _restSecs = 10;
+        _targetSets = 8;
+        WorkoutTypePicker.SelectedIndex = 1; // HIIT
+        UpdateConfigUI();
+    }
+
+    private void OnPresetEnduranceClicked(object sender, EventArgs e)
+    {
+        _jumpSecs = 60;
+        _restSecs = 20;
+        _targetSets = 10;
+        WorkoutTypePicker.SelectedIndex = 0; // Basic Jumps
+        UpdateConfigUI();
+    }
+
+    // ==========================================
+    // 3. WORKOUT EXECUTION & TIMER LOOP
+    // ==========================================
 
     private void OnStartWorkoutClicked(object sender, EventArgs e)
     {
-        _jumpTimeSecs = int.TryParse(JumpSecsLabel.Text, out var j) ? j : 30;
-        _restTimeSecs = int.TryParse(RestSecsLabel.Text, out var r) ? r : 15;
-        _totalSets = int.TryParse(TargetSetsLabel.Text, out var s) ? s : 5;
+        ConfigView.IsVisible = false;
+        SummaryView.IsVisible = false;
+        ActiveView.IsVisible = true;
 
         _currentSet = 1;
-        _totalJumpsLogged = 0;
+        _isJumpInterval = true;
+        _secondsRemaining = _jumpSecs;
+        _isTimerRunning = true;
+        _totalJumpsInWorkout = 0;
 
-        ConfigView.IsVisible = false;
-        SummaryView.IsVisible = false;
-        ActiveView.IsVisible = true;
-
-        StartJumpInterval();
+        UpdateTimerUI();
+        StartTimerLoop();
     }
 
-    private void OnJumpDetected(object? sender, EventArgs e)
+    private void StartTimerLoop()
     {
-        // Only count jumps when active in a JUMP set
+        Dispatcher.StartTimer(TimeSpan.FromSeconds(1), () =>
+        {
+            if (!_isTimerRunning) return false;
+
+            _secondsRemaining--;
+
+            if (_secondsRemaining <= 0)
+            {
+                if (_isJumpInterval)
+                {
+                    // Switch to Rest
+                    _isJumpInterval = false;
+                    _secondsRemaining = _restSecs;
+                }
+                else
+                {
+                    // Next Set
+                    _currentSet++;
+                    if (_currentSet > _targetSets)
+                    {
+                        _isTimerRunning = false;
+                        ShowSummary();
+                        return false;
+                    }
+
+                    _isJumpInterval = true;
+                    _secondsRemaining = _jumpSecs;
+                }
+            }
+
+            UpdateTimerUI();
+            return true;
+        });
+    }
+
+    private void UpdateTimerUI()
+    {
+        TimerLabel.Text = _secondsRemaining.ToString();
+        SetInfoLabel.Text = $"Set {_currentSet} of {_targetSets}";
+
         if (_isJumpInterval)
         {
-            _liveJumpCount++;
-
-            // Update labels in real-time
-            TotalJumpsLabel.Text = $"Total Jumps Recorded: {_liveJumpCount}";
-        }
-    }
-
-    private void StartActiveWorkout()
-    {
-        ConfigView.IsVisible = false;
-        ActiveView.IsVisible = true;
-        SummaryView.IsVisible = false;
-
-        _liveJumpCount = 0;
-        _jumpDetector.StartTracking(); // Start pocket detection
-    }
-
-    // Call this when ending or completing a workout
-    private void StopActiveWorkout()
-    {
-        _jumpDetector.StopTracking(); // Stop sensor listening to preserve battery
-
-        ActiveView.IsVisible = false;
-        SummaryView.IsVisible = true;
-
-        CompletedSetsLabel.Text = $"Sets Completed: 5";
-        TotalJumpsLabel.Text = $"Total Jumps Recorded: {_liveJumpCount}";
-    }
-
-    protected override void OnDisappearing()
-    {
-        base.OnDisappearing();
-        _jumpDetector.StopTracking(); // Safety cleanup when navigating away
-    }
-    private void StartJumpInterval()
-    {
-        MainThread.BeginInvokeOnMainThread(() =>
-        {
-            PageBackgroundColor = Color.FromArgb("#4CAF50"); // Green
             StatusLabel.Text = "JUMP!";
-            SetInfoLabel.Text = $"Set {_currentSet} of {_totalSets}";
-        });
-
-        TriggerTransitionAlert();
-        StartCountDown(_jumpTimeSecs, OnJumpIntervalFinished);
-    }
-
-    private void StartRestInterval()
-    {
-        MainThread.BeginInvokeOnMainThread(() =>
+            StatusLabel.TextColor = Color.FromArgb("#10B981"); // Green
+        }
+        else
         {
-            PageBackgroundColor = Color.FromArgb("#FF9800"); // Orange
             StatusLabel.Text = "REST";
-        });
-
-        TriggerTransitionAlert();
-        StartCountDown(_restTimeSecs, OnRestIntervalFinished);
-    }
-
-    private void StartCountDown(int seconds, Action onFinish)
-    {
-        _timeRemaining = seconds;
-
-        MainThread.BeginInvokeOnMainThread(() =>
-        {
-            TimerLabel.Text = _timeRemaining.ToString();
-        });
-
-        _timer?.Stop();
-        _timer = new System.Timers.Timer(1000);
-        _timer.Elapsed += (s, e) =>
-        {
-            _timeRemaining--;
-
-            MainThread.BeginInvokeOnMainThread(() =>
-            {
-                TimerLabel.Text = _timeRemaining.ToString();
-
-                if (_timeRemaining <= 0)
-                {
-                    _timer.Stop();
-                    onFinish();
-                }
-            });
-        };
-        _timer.Start();
-    }
-
-    private void OnJumpIntervalFinished()
-    {
-        if (_restTimeSecs > 0)
-        {
-            StartRestInterval();
-        }
-        else
-        {
-            OnRestIntervalFinished();
-        }
-    }
-
-    private void OnRestIntervalFinished()
-    {
-        if (_currentSet < _totalSets)
-        {
-            _currentSet++;
-            StartJumpInterval();
-        }
-        else
-        {
-            MainThread.BeginInvokeOnMainThread(FinishWorkout);
+            StatusLabel.TextColor = Color.FromArgb("#F59E0B"); // Orange
         }
     }
 
     private void OnEndWorkoutClicked(object sender, EventArgs e)
     {
-        _timer?.Stop();
-        FinishWorkout();
+        _isTimerRunning = false;
+        ShowSummary();
     }
 
-    private void FinishWorkout()
+    // ==========================================
+    // 4. SUMMARY & DATABASE PERSISTENCE
+    // ==========================================
+
+    private void ShowSummary()
     {
-        TriggerTransitionAlert();
-        PageBackgroundColor = Colors.White;
         ActiveView.IsVisible = false;
+        ConfigView.IsVisible = false;
         SummaryView.IsVisible = true;
 
-        CompletedSetsLabel.Text = $"Sets Completed: {_currentSet}";
-        TotalJumpsLabel.Text = $"Total Jumps Recorded: {_totalJumpsLogged}";
+        int completedSets = Math.Min(_currentSet, _targetSets);
+        CompletedSetsLabel.Text = $"Sets Completed: {completedSets}";
+        TotalJumpsLabel.Text = $"Total Jumps Recorded: {_totalJumpsInWorkout}";
     }
-
-    // --- SUMMARY VIEW HANDLERS ---
 
     private void OnAddJumpsClicked(object sender, EventArgs e)
     {
-        if (int.TryParse(JumpsLoggedEntry.Text, out var count))
+        if (int.TryParse(JumpsLoggedEntry.Text, out int extraJumps) && extraJumps > 0)
         {
-            _totalJumpsLogged += count;
-            TotalJumpsLabel.Text = $"Total Jumps Recorded: {_totalJumpsLogged}";
+            _totalJumpsInWorkout += extraJumps;
+            TotalJumpsLabel.Text = $"Total Jumps Recorded: {_totalJumpsInWorkout}";
             JumpsLoggedEntry.Text = string.Empty;
         }
     }
 
     private async void OnSaveWorkoutClicked(object sender, EventArgs e)
     {
-        try
-        {
-            await _dbService.SaveWorkoutAsync(
-                sets: _currentSet > 0 ? _currentSet : 1,
-                jumps: _totalJumpsLogged,
-                jumpSecs: _jumpTimeSecs,
-                restSecs: _restTimeSecs
-            );
+        int completedSets = Math.Min(_currentSet, _targetSets);
+        string selectedType = WorkoutTypePicker.SelectedItem?.ToString() ?? "Basic Jumps";
 
-            await DisplayAlert("Saved", "Workout recorded to Calendar & Stats!", "OK");
-            ResetToConfigView();
-        }
-        catch (Exception ex)
+        var record = new WorkoutRecord
         {
-            Debug.WriteLine($"Error saving workout: {ex.Message}");
-            await DisplayAlert("Error", "Could not save workout data.", "OK");
-        }
+            Date = DateTime.Now,
+            SetsCompleted = completedSets,
+            TotalJumps = _totalJumpsInWorkout,
+            JumpSecs = _jumpSecs,
+            RestSecs = _restSecs,
+            WorkoutType = selectedType
+        };
+
+        await _dbService.SaveWorkoutAsync(record);
+
+        ResetToConfigView();
     }
 
-    private async void OnExitClicked(object sender, EventArgs e)
+    private void OnExitClicked(object sender, EventArgs e)
     {
-        bool confirm = await DisplayAlert("Exit Workout", "Discard this workout without saving?", "Yes", "No");
-        if (confirm)
-        {
-            ResetToConfigView();
-        }
+        ResetToConfigView();
     }
 
     private void ResetToConfigView()
     {
-        _timer?.Stop();
-        _currentSet = 0;
-        _totalJumpsLogged = 0;
-
-        if (JumpsLoggedEntry != null)
-            JumpsLoggedEntry.Text = string.Empty;
-
-        PageBackgroundColor = Colors.White;
-        SummaryView.IsVisible = false;
         ActiveView.IsVisible = false;
+        SummaryView.IsVisible = false;
         ConfigView.IsVisible = true;
     }
 }
