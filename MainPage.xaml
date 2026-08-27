@@ -26,7 +26,7 @@
                                TextColor="{AppThemeBinding Light=#6C757D, Dark=#A0A0B2}" />
                     </VerticalStackLayout>
                 </Border>
-
+                
                 <!-- Interval Inputs Section -->
                 <Border BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1E1E2E}" 
                         Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#2A2A3D}"

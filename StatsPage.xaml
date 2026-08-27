@@ -2,86 +2,199 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="JumpRopeApp.StatsPage"
-             BackgroundColor="{AppThemeBinding Light=#F8F9FA, Dark=#121212}"
-             Title="Analytics">
+             BackgroundColor="{AppThemeBinding Light=#F4F5F9, Dark=#0F172A}"
+             Title="Analytics &amp; Profile">
 
     <ScrollView Padding="20">
-        <VerticalStackLayout Spacing="20" MaximumWidthRequest="500">
+        <VerticalStackLayout Spacing="24" MaximumWidthRequest="480">
 
-            <!-- Header Card -->
-            <Border BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1E1E2E}" 
-                    Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#2A2A3D}"
-                    StrokeShape="RoundRectangle 16"
+            <!-- Profile Section -->
+            <Border BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1E293B}"
+                    Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}"
+                    StrokeThickness="1"
+                    StrokeShape="RoundRectangle 20"
                     Padding="20">
-                <VerticalStackLayout Spacing="6">
-                    <Label Text="Performance Overview" 
-                           FontSize="22" 
-                           FontAttributes="Bold" 
-                           HorizontalOptions="Center" 
-                           TextColor="{AppThemeBinding Light=#1A1A1A, Dark=#FFFFFF}" />
-                    <Label Text="Lifetime workout statistics and performance metrics" 
-                           FontSize="13" 
-                           HorizontalOptions="Center" 
-                           TextColor="{AppThemeBinding Light=#6C757D, Dark=#A0A0B2}" />
+                <VerticalStackLayout Spacing="16">
+
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="User Profile" 
+                               FontSize="20" 
+                               FontAttributes="Bold" 
+                               VerticalOptions="Center"
+                               TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
+
+                        <!-- Toggle Edit Button -->
+                        <Button Grid.Column="1"
+                                x:Name="EditProfileButton"
+                                Text="Edit Profile"
+                                Clicked="OnEditProfileClicked"
+                                BackgroundColor="Transparent"
+                                TextColor="#6366F1"
+                                FontAttributes="Bold"
+                                FontSize="13"
+                                IsVisible="False" />
+                    </Grid>
+
+                    <!-- ================= VIEW MODE (Read-Only Display) ================= -->
+                    <VerticalStackLayout x:Name="ProfileViewMode" Spacing="12">
+                        <Border BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}"
+                                Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}"
+                                StrokeShape="RoundRectangle 12"
+                                Padding="16">
+                            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="16">
+                                <VerticalStackLayout Grid.Column="0" Spacing="2">
+                                    <Label Text="NAME" FontSize="10" FontAttributes="Bold" TextColor="#6366F1" />
+                                    <Label x:Name="DisplayPageNameLabel" Text="Not set" FontSize="16" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
+                                </VerticalStackLayout>
+
+                                <VerticalStackLayout Grid.Column="1" Spacing="2">
+                                    <Label Text="WEIGHT" FontSize="10" FontAttributes="Bold" TextColor="#10B981" />
+                                    <Label x:Name="DisplayWeightLabel" Text="-- kg" FontSize="16" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
+                                </VerticalStackLayout>
+
+                                <VerticalStackLayout Grid.Column="2" Spacing="2">
+                                    <Label Text="HEIGHT" FontSize="10" FontAttributes="Bold" TextColor="#3B82F6" />
+                                    <Label x:Name="DisplayHeightLabel" Text="-- cm" FontSize="16" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
+                                </VerticalStackLayout>
+                            </Grid>
+                        </Border>
+                    </VerticalStackLayout>
+
+                    <!-- ================= EDIT / CREATE MODE ================= -->
+                    <VerticalStackLayout x:Name="ProfileEditMode" Spacing="12" IsVisible="False">
+                        <!-- Name Field -->
+                        <Border BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}"
+                                Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}"
+                                StrokeShape="RoundRectangle 12"
+                                Padding="12,4">
+                            <Entry x:Name="NameEntry" 
+                                   Placeholder="Full Name" 
+                                   PlaceholderColor="{AppThemeBinding Light=#94A3B8, Dark=#64748B}"
+                                   TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}"
+                                   FontSize="14" />
+                        </Border>
+
+                        <!-- Weight & Height Grid -->
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                            <Border Grid.Column="0"
+                                    BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}"
+                                    Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}"
+                                    StrokeShape="RoundRectangle 12"
+                                    Padding="12,4">
+                                <Entry x:Name="WeightEntry" 
+                                       Placeholder="Weight (kg)" 
+                                       PlaceholderColor="{AppThemeBinding Light=#94A3B8, Dark=#64748B}"
+                                       Keyboard="Numeric" 
+                                       TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}"
+                                       FontSize="14" />
+                            </Border>
+
+                            <Border Grid.Column="1"
+                                    BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}"
+                                    Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}"
+                                    StrokeShape="RoundRectangle 12"
+                                    Padding="12,4">
+                                <Entry x:Name="HeightEntry" 
+                                       Placeholder="Height (cm)" 
+                                       PlaceholderColor="{AppThemeBinding Light=#94A3B8, Dark=#64748B}"
+                                       Keyboard="Numeric" 
+                                       TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}"
+                                       FontSize="14" />
+                            </Border>
+                        </Grid>
+
+                        <!-- Action Buttons -->
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="12" Margin="0,8,0,0">
+                            <Button Text="Save Profile" 
+                                    Clicked="OnSaveProfileClicked" 
+                                    BackgroundColor="#6366F1" 
+                                    TextColor="White"
+                                    FontAttributes="Bold"
+                                    CornerRadius="12"
+                                    HeightRequest="48" />
+
+                            <Button x:Name="CancelOrDeleteButton"
+                                    Grid.Column="1" 
+                                    Text="Cancel" 
+                                    Clicked="OnCancelOrDeleteClicked" 
+                                    BackgroundColor="{AppThemeBinding Light=#FEE2E2, Dark=#3B1219}" 
+                                    TextColor="#EF4444"
+                                    FontAttributes="Bold"
+                                    CornerRadius="12"
+                                    HeightRequest="48" />
+                        </Grid>
+                    </VerticalStackLayout>
+
                 </VerticalStackLayout>
             </Border>
 
-            <!-- Metrics Grid -->
-            <Grid ColumnDefinitions="*, *" RowDefinitions="Auto, Auto" ColumnSpacing="12" RowSpacing="12">
+            <!-- Lifetime Analytics Section -->
+            <Border BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1E293B}"
+                    Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}"
+                    StrokeThickness="1"
+                    StrokeShape="RoundRectangle 20"
+                    Padding="20">
+                <VerticalStackLayout Spacing="16">
+                    <Label Text="Lifetime Overview" 
+                           FontSize="20" 
+                           FontAttributes="Bold" 
+                           TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
 
-                <!-- Lifetime / All-Time Jumps -->
-                <Border Grid.Row="0" Grid.Column="0" 
-                        BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1E1E2E}" 
-                        Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#2A2A3D}" 
-                        StrokeShape="RoundRectangle 16" 
-                        Padding="16">
-                    <VerticalStackLayout Spacing="6">
-                        <Label Text="TOTAL JUMPS" FontSize="11" FontAttributes="Bold" TextColor="#6366F1" />
-                        <Label x:Name="AllTimeJumpsLabel" Text="0" FontSize="26" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#1A1A1A, Dark=#FFFFFF}" />
-                        <!-- Fallback mapping alias if referenced elsewhere -->
-                        <Label x:Name="LifetimeJumpsLabel" IsVisible="False" />
-                    </VerticalStackLayout>
-                </Border>
+                    <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,*" RowSpacing="12" ColumnSpacing="12">
+                        <Border Grid.Row="0" Grid.Column="0"
+                                BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}"
+                                Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}"
+                                StrokeShape="RoundRectangle 14"
+                                Padding="14">
+                            <VerticalStackLayout Spacing="6">
+                                <Label Text="TOTAL JUMPS" FontSize="11" FontAttributes="Bold" TextColor="#6366F1" />
+                                <Label x:Name="AllTimeJumpsLabel" Text="0" FontSize="22" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
+                            </VerticalStackLayout>
+                        </Border>
 
-                <!-- Total Workouts -->
-                <Border Grid.Row="0" Grid.Column="1" 
-                        BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1E1E2E}" 
-                        Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#2A2A3D}" 
-                        StrokeShape="RoundRectangle 16" 
-                        Padding="16">
-                    <VerticalStackLayout Spacing="6">
-                        <Label Text="WORKOUTS" FontSize="11" FontAttributes="Bold" TextColor="#10B981" />
-                        <Label x:Name="TotalWorkoutsLabel" Text="0" FontSize="26" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#1A1A1A, Dark=#FFFFFF}" />
-                        <!-- Fallback mapping alias -->
-                        <Label x:Name="TotalSessionsLabel" IsVisible="False" />
-                    </VerticalStackLayout>
-                </Border>
+                        <Border Grid.Row="0" Grid.Column="1"
+                                BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}"
+                                Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}"
+                                StrokeShape="RoundRectangle 14"
+                                Padding="14">
+                            <VerticalStackLayout Spacing="6">
+                                <Label Text="TOTAL SETS" FontSize="11" FontAttributes="Bold" TextColor="#10B981" />
+                                <Label x:Name="TotalSetsLabel" Text="0" FontSize="22" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
+                            </VerticalStackLayout>
+                        </Border>
 
-                <!-- Total Sets -->
-                <Border Grid.Row="1" Grid.Column="0" 
-                        BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1E1E2E}" 
-                        Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#2A2A3D}" 
-                        StrokeShape="RoundRectangle 16" 
-                        Padding="16">
-                    <VerticalStackLayout Spacing="6">
-                        <Label Text="SETS COMPLETED" FontSize="11" FontAttributes="Bold" TextColor="#F59E0B" />
-                        <Label x:Name="TotalSetsLabel" Text="0" FontSize="26" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#1A1A1A, Dark=#FFFFFF}" />
-                    </VerticalStackLayout>
-                </Border>
+                        <Border Grid.Row="1" Grid.Column="0"
+                                BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}"
+                                Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}"
+                                StrokeShape="RoundRectangle 14"
+                                Padding="14">
+                            <VerticalStackLayout Spacing="6">
+                                <Label Text="WORKOUTS" FontSize="11" FontAttributes="Bold" TextColor="#F59E0B" />
+                                <Label x:Name="TotalWorkoutsLabel" Text="0" FontSize="22" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
+                            </VerticalStackLayout>
+                        </Border>
 
-                <!-- Avg Jumps / Session -->
-                <Border Grid.Row="1" Grid.Column="1" 
-                        BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1E1E2E}" 
-                        Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#2A2A3D}" 
-                        StrokeShape="RoundRectangle 16" 
-                        Padding="16">
-                    <VerticalStackLayout Spacing="6">
-                        <Label Text="AVG JUMPS/SESSION" FontSize="11" FontAttributes="Bold" TextColor="#EC4899" />
-                        <Label x:Name="AvgJumpsLabel" Text="0" FontSize="26" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#1A1A1A, Dark=#FFFFFF}" />
-                    </VerticalStackLayout>
-                </Border>
+                        <Border Grid.Row="1" Grid.Column="1"
+                                BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}"
+                                Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}"
+                                StrokeShape="RoundRectangle 14"
+                                Padding="14">
+                            <VerticalStackLayout Spacing="6">
+                                <Label Text="AVG / SESSION" FontSize="11" FontAttributes="Bold" TextColor="#3B82F6" />
+                                <Label x:Name="AvgJumpsLabel" Text="0" FontSize="22" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
+                            </VerticalStackLayout>
+                        </Border>
+                    </Grid>
 
-            </Grid>
+                    <Button Text="Reset Lifetime Stats" 
+                            Clicked="OnResetStatsClicked" 
+                            BackgroundColor="Transparent" 
+                            TextColor="#EF4444" 
+                            FontAttributes="Bold"
+                            FontSize="13"
+                            Margin="0,4,0,0" />
+                </VerticalStackLayout>
+            </Border>
 
         </VerticalStackLayout>
     </ScrollView>

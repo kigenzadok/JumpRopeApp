@@ -14,31 +14,38 @@ public class DatabaseService
 
     private async Task InitAsync()
     {
-        if (_database is not null)
-            return;
+        if (_database is not null) return;
 
         var dbPath = Path.Combine(FileSystem.AppDataDirectory, "jumprope.db3");
         _database = new SQLiteAsyncConnection(dbPath);
 
-        // Ensure the table exists before any queries run
         await _database.CreateTableAsync<WorkoutRecord>();
+        await _database.CreateTableAsync<UserProfile>();
     }
 
-    public async Task<(int Sets, int Jumps)> GetDayStatsAsync(DateTime date)
+    // ==========================================
+    // 1. CALENDAR & WORKOUT LOG QUERIES
+    // ==========================================
+
+    public async Task<List<WorkoutRecord>> GetWorkoutsForDateAsync(DateTime date)
     {
         await InitAsync();
-        if (_database == null) return (0, 0);
+        if (_database == null) return new List<WorkoutRecord>();
 
         DateTime startOfDay = date.Date;
         DateTime endOfDay = startOfDay.AddDays(1);
 
-        var records = await _database.Table<WorkoutRecord>()
-                                     .Where(w => w.Date >= startOfDay && w.Date < endOfDay)
-                                     .ToListAsync();
+        return await _database.Table<WorkoutRecord>()
+                              .Where(w => w.Date >= startOfDay && w.Date < endOfDay)
+                              .OrderByDescending(w => w.Date)
+                              .ToListAsync();
+    }
 
+    public async Task<(int Sets, int Jumps)> GetDayStatsAsync(DateTime date)
+    {
+        var records = await GetWorkoutsForDateAsync(date);
         int totalSets = records?.Sum(r => r.SetsCompleted) ?? 0;
         int totalJumps = records?.Sum(r => r.TotalJumps) ?? 0;
-
         return (totalSets, totalJumps);
     }
 
@@ -51,14 +58,10 @@ public class DatabaseService
         if (allWorkouts == null || !allWorkouts.Any()) return 0;
 
         var workoutDates = allWorkouts.Select(w => w.Date.Date).Distinct().OrderByDescending(d => d).ToList();
-
         int streak = 0;
         DateTime checkDate = DateTime.Now.Date;
 
-        if (!workoutDates.Contains(checkDate))
-        {
-            checkDate = checkDate.AddDays(-1);
-        }
+        if (!workoutDates.Contains(checkDate)) checkDate = checkDate.AddDays(-1);
 
         while (workoutDates.Contains(checkDate))
         {
@@ -69,43 +72,67 @@ public class DatabaseService
         return streak;
     }
 
-    public async Task<(int Jumps, int Sets, int Workouts)> GetLifetimeStatsAsync()
+    public async Task SaveWorkoutAsync(WorkoutRecord record)
     {
         await InitAsync();
-        if (_database == null) return (0, 0, 0);
-
-        var records = await _database.Table<WorkoutRecord>().ToListAsync();
-        if (records == null || !records.Any()) return (0, 0, 0);
-
-        int jumps = records.Sum(r => r.TotalJumps);
-        int sets = records.Sum(r => r.SetsCompleted);
-        int workouts = records.Count;
-
-        return (jumps, sets, workouts);
+        if (_database != null) await _database.InsertAsync(record);
     }
 
-    public async Task SaveWorkoutAsync(WorkoutRecord record)
+    public async Task ClearAllWorkoutsAsync()
     {
         await InitAsync();
         if (_database != null)
         {
-            await _database.InsertAsync(record);
+            await _database.DeleteAllAsync<WorkoutRecord>();
         }
     }
 
-    // Fixed Overload Method
-    public async Task SaveWorkoutAsync(int sets, int jumps, int jumpSecs = 0, int restSecs = 0, string workoutType = "Basic Jumps")
-    {
-        var record = new WorkoutRecord
-        {
-            Date = DateTime.Now,
-            SetsCompleted = sets,
-            TotalJumps = jumps,
-            JumpSecs = jumpSecs,
-            RestSecs = restSecs,
-            WorkoutType = workoutType
-        };
+    // ==========================================
+    // 2. LIFETIME ANALYTICS
+    // ==========================================
 
-        await SaveWorkoutAsync(record);
+    public async Task<(int TotalJumps, int TotalSets, int TotalWorkouts)> GetLifetimeStatsAsync()
+    {
+        await InitAsync();
+        if (_database == null) return (0, 0, 0);
+
+        var allRecords = await _database.Table<WorkoutRecord>().ToListAsync();
+
+        int totalJumps = allRecords?.Sum(r => r.TotalJumps) ?? 0;
+        int totalSets = allRecords?.Sum(r => r.SetsCompleted) ?? 0;
+        int totalWorkouts = allRecords?.Count ?? 0;
+
+        return (totalJumps, totalSets, totalWorkouts);
+    }
+
+    // ==========================================
+    // 3. USER PROFILE CRUD OPERATIONS
+    // ==========================================
+
+    public async Task<UserProfile?> GetProfileAsync()
+    {
+        await InitAsync();
+        if (_database == null) return null;
+        return await _database.Table<UserProfile>().FirstOrDefaultAsync();
+    }
+
+    public async Task SaveOrUpdateProfileAsync(UserProfile profile)
+    {
+        await InitAsync();
+        if (_database == null) return;
+
+        if (profile.Id == 0)
+            await _database.InsertAsync(profile);
+        else
+            await _database.UpdateAsync(profile);
+    }
+
+    public async Task DeleteProfileAsync(UserProfile profile)
+    {
+        await InitAsync();
+        if (_database != null)
+        {
+            await _database.DeleteAsync(profile);
+        }
     }
 }

@@ -12,48 +12,64 @@ public partial class CalendarPage : ContentPage
     {
         InitializeComponent();
 
-        if (WorkoutDatePicker != null)
-        {
-            WorkoutDatePicker.DateSelected += OnDateSelected;
-        }
+        // Wire up the DatePicker selection event
+        WorkoutDatePicker.DateSelected += OnDateSelected;
     }
 
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        await LoadDataForDateAsync(WorkoutDatePicker.Date);
-        await LoadStreakAsync();
+
+        // Default picker to today's date and load initial stats
+        WorkoutDatePicker.Date = DateTime.Now.Date;
+        await LoadCalendarDataAsync(WorkoutDatePicker.Date);
     }
 
     private async void OnDateSelected(object? sender, DateChangedEventArgs e)
     {
-        await LoadDataForDateAsync(e.NewDate);
+        await LoadCalendarDataAsync(e.NewDate);
     }
 
-    private async Task LoadDataForDateAsync(DateTime date)
+    private async Task LoadCalendarDataAsync(DateTime selectedDate)
     {
-        SelectedDateLabel.Text = date.ToString("MMM dd, yyyy");
+        // 1. Refresh Streak and Badges
+        int streak = await _dbService.GetCurrentStreakAsync();
+        StreakLabel.Text = $"{streak} Days";
+        BadgeLabel.Text = GetBadgeForStreak(streak);
 
-        var (sets, jumps) = await _dbService.GetDayStatsAsync(date);
+        // 2. Update Header Selected Date Label
+        SelectedDateLabel.Text = selectedDate.ToString("MMM dd, yyyy");
 
-        SetsCompletedLabel.Text = $"Sets: {sets}";
-        TotalJumpsLabel.Text = $"Jumps: {jumps:N0}";
+        // 3. Load Day Aggregate Totals
+        var (sets, jumps) = await _dbService.GetDayStatsAsync(selectedDate);
+        DaySetsLabel.Text = $"Sets: {sets}";
+        DayJumpsLabel.Text = $"Jumps: {jumps}";
 
-        if (sets > 0 || jumps > 0)
+        // 4. Load Detailed Workouts Collection for Selected Date
+        var records = await _dbService.GetWorkoutsForDateAsync(selectedDate);
+
+        if (records != null && records.Count > 0)
         {
-            BadgeLabel.Text = "✅ Completed";
-            BadgeLabel.TextColor = Color.FromArgb("#10B981");
+            EmptyStateLabel.IsVisible = false;
+            DayWorkoutsListView.ItemsSource = records;
+            DayWorkoutsListView.IsVisible = true;
         }
         else
         {
-            BadgeLabel.Text = "❌ No Workout";
-            BadgeLabel.TextColor = Color.FromArgb("#A0A0B2");
+            DayWorkoutsListView.ItemsSource = null;
+            DayWorkoutsListView.IsVisible = false;
+            EmptyStateLabel.IsVisible = true;
         }
     }
 
-    private async Task LoadStreakAsync()
+    private static string GetBadgeForStreak(int streakDays)
     {
-        int streak = await _dbService.GetCurrentStreakAsync();
-        StreakLabel.Text = $"{streak} Day{(streak == 1 ? "" : "s")}";
+        return streakDays switch
+        {
+            >= 30 => "Pro Jumper 🏆",
+            >= 14 => "Consistent 🔥",
+            >= 7 => "Rhythm Starter ⚡",
+            _ => "Beginner 🌱"
+        };
     }
 }
