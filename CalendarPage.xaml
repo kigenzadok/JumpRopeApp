@@ -50,39 +50,57 @@
                     StrokeShape="RoundRectangle 16"
                     Padding="16">
                 <VerticalStackLayout Spacing="12">
+
+                    <!-- Single Selected Date Header -->
                     <Label x:Name="SelectedDateLabel" 
-                           Text="Select a Date" 
+                           Text="Aug 27, 2026" 
                            FontSize="16" 
                            FontAttributes="Bold" 
                            TextColor="{AppThemeBinding Light=#1A1A1A, Dark=#FFFFFF}" />
 
-                    <Grid ColumnDefinitions="*, *" ColumnSpacing="12">
-                        <Label x:Name="SetsCompletedLabel" Text="Sets: 0" FontSize="14" TextColor="{AppThemeBinding Light=#6C757D, Dark=#A0A0B2}" />
-                        <Label Grid.Column="1" x:Name="TotalJumpsLabel" Text="Jumps: 0" FontSize="14" FontAttributes="Bold" TextColor="#6366F1" />
+                    <!-- Daily Aggregates -->
+                    <Grid ColumnDefinitions="*, *">
+                        <Label x:Name="DaySetsLabel" Text="Sets: 0" FontSize="14" TextColor="{AppThemeBinding Light=#6C757D, Dark=#A6ADC8}" />
+                        <Label Grid.Column="1" x:Name="DayJumpsLabel" Text="Jumps: 0" FontSize="14" FontAttributes="Bold" TextColor="#89B4FA" HorizontalOptions="End" />
                     </Grid>
 
-                    <CollectionView x:Name="WorkoutsListView" HeightRequest="250" Margin="0,10,0,0">
-                        <CollectionView.EmptyView>
-                            <Label Text="No workouts logged for this date." 
-                                   HorizontalOptions="Center" 
-                                   VerticalOptions="Center" 
-                                   TextColor="{AppThemeBinding Light=#6C757D, Dark=#A0A0B2}" />
-                        </CollectionView.EmptyView>
+                    <!-- Empty State Placeholder -->
+                    <Label x:Name="EmptyStateLabel"
+                           Text="No workouts logged for this date."
+                           TextColor="{AppThemeBinding Light=#6C757D, Dark=#6C7086}"
+                           HorizontalOptions="Center"
+                           Margin="0,15"
+                           IsVisible="True" />
+
+                    <!-- Dynamic Session List for Selected Date -->
+                    <CollectionView x:Name="DayWorkoutsListView" IsVisible="False" Margin="0,5,0,0">
                         <CollectionView.ItemTemplate>
                             <DataTemplate>
-                                <Border BackgroundColor="{AppThemeBinding Light=#F0F0F5, Dark=#272A45}" 
-                                        Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#3F436B}"
-                                        StrokeShape="RoundRectangle 12"
-                                        Padding="12" 
-                                        Margin="0,0,0,8">
-                                    <Grid ColumnDefinitions="*, Auto">
-                                        <Label Text="{Binding DateFormatted}" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#1A1A1A, Dark=#FFFFFF}" />
-                                        <Label Grid.Column="1" Text="{Binding TotalJumps, StringFormat='{0} Jumps'}" FontAttributes="Bold" TextColor="#6366F1" />
+                                <Border BackgroundColor="{AppThemeBinding Light=#F0F0F5, Dark=#2B2B3D}"
+                                        StrokeThickness="0"
+                                        Margin="0,0,0,8"
+                                        Padding="12"
+                                        StrokeShape="RoundRectangle 8">
+                                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                                        <Label Text="{Binding WorkoutType}"
+                                               TextColor="{AppThemeBinding Light=#1A1A1A, Dark=#FFFFFF}"
+                                               FontAttributes="Bold"
+                                               FontSize="14" />
+                                        <Label Grid.Column="1"
+                                               Text="{Binding Date, StringFormat='{0:h:mm tt}'}"
+                                               TextColor="#A6ADC8"
+                                               FontSize="12" />
+                                        <Label Grid.Row="1" Grid.ColumnSpan="2"
+                                               Text="{Binding TotalJumps, StringFormat='{0} jumps completed'}"
+                                               TextColor="#89B4FA"
+                                               FontSize="12"
+                                               Margin="0,4,0,0" />
                                     </Grid>
                                 </Border>
                             </DataTemplate>
                         </CollectionView.ItemTemplate>
                     </CollectionView>
+
                 </VerticalStackLayout>
             </Border>
 

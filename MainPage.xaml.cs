@@ -283,4 +283,6 @@ public partial class MainPage : ContentPage
         SummaryView.IsVisible = false;
         ConfigView.IsVisible = true;
     }
+
+    
 }
