@@ -2,105 +2,100 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="JumpRopeApp.CalendarPage"
-             BackgroundColor="{AppThemeBinding Light=#F8F9FA, Dark=#121212}"
-             Title="Workout Log">
+             BackgroundColor="{AppThemeBinding Light=#F4F5F9, Dark=#0F172A}"
+             Title="Workout History">
 
     <ScrollView Padding="20">
-        <VerticalStackLayout Spacing="20" MaximumWidthRequest="500">
+        <VerticalStackLayout Spacing="20" MaximumWidthRequest="480">
 
-            <!-- Header & Date Picker Card -->
-            <Border BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1E1E2E}" 
-                    Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#2A2A3D}"
-                    StrokeShape="RoundRectangle 16"
-                    Padding="20">
+            <!-- 1. CALENDAR DATE PICKER & SELECTION -->
+            <Border BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1E293B}"
+                    Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}"
+                    StrokeShape="RoundRectangle 20" Padding="16">
                 <VerticalStackLayout Spacing="12">
-                    <Label Text="Activity Log &amp; Calendar" 
-                           FontSize="22" 
-                           FontAttributes="Bold" 
-                           HorizontalOptions="Center" 
-                           TextColor="{AppThemeBinding Light=#1A1A1A, Dark=#FFFFFF}" />
+                    <Label Text="📅 Select Date" FontSize="14" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
 
                     <DatePicker x:Name="WorkoutDatePicker" 
-                                HorizontalOptions="Center"
-                                TextColor="{AppThemeBinding Light=#1A1A1A, Dark=#FFFFFF}" />
+                                DateSelected="OnDateSelected"
+                                Format="D" 
+                                TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}"
+                                HorizontalOptions="Fill" />
                 </VerticalStackLayout>
             </Border>
 
-            <!-- Streak & Milestone Badge Card -->
-            <Border BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1E1E2E}" 
-                    Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#2A2A3D}"
-                    StrokeShape="RoundRectangle 16"
-                    Padding="16">
-                <Grid ColumnDefinitions="*, *" ColumnSpacing="12">
-                    <VerticalStackLayout Grid.Column="0" Spacing="4">
-                        <Label Text="CURRENT STREAK" FontSize="11" FontAttributes="Bold" TextColor="#6366F1" />
-                        <Label x:Name="StreakLabel" Text="0 Days" FontSize="18" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#1A1A1A, Dark=#FFFFFF}" />
-                    </VerticalStackLayout>
+            <!-- 2. MONTHLY SUMMARY HUD -->
+            <Border BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1E293B}"
+                    Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}"
+                    StrokeShape="RoundRectangle 20" Padding="16">
+                <VerticalStackLayout Spacing="12">
+                    <Label x:Name="MonthSummaryTitleLabel" Text="📊 Monthly Summary" FontSize="14" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
 
-                    <VerticalStackLayout Grid.Column="1" Spacing="4">
-                        <Label Text="ACHIEVEMENT BADGE" FontSize="11" FontAttributes="Bold" TextColor="#10B981" />
-                        <Label x:Name="BadgeLabel" Text="Beginner" FontSize="18" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#1A1A1A, Dark=#FFFFFF}" />
-                    </VerticalStackLayout>
-                </Grid>
+                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="10">
+                        <Border Grid.Column="0" BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" StrokeShape="RoundRectangle 12" Padding="10">
+                            <VerticalStackLayout Spacing="2">
+                                <Label Text="TOTAL JUMPS" FontSize="9" FontAttributes="Bold" TextColor="#6366F1" HorizontalOptions="Center" />
+                                <Label x:Name="MonthlyJumpsLabel" Text="0" FontSize="15" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" HorizontalOptions="Center" />
+                            </VerticalStackLayout>
+                        </Border>
+
+                        <Border Grid.Column="1" BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" StrokeShape="RoundRectangle 12" Padding="10">
+                            <VerticalStackLayout Spacing="2">
+                                <Label Text="ACTIVE TIME" FontSize="9" FontAttributes="Bold" TextColor="#F59E0B" HorizontalOptions="Center" />
+                                <Label x:Name="MonthlyTimeLabel" Text="0m" FontSize="15" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" HorizontalOptions="Center" />
+                            </VerticalStackLayout>
+                        </Border>
+
+                        <Border Grid.Column="2" BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" StrokeShape="RoundRectangle 12" Padding="10">
+                            <VerticalStackLayout Spacing="2">
+                                <Label Text="CALORIES" FontSize="9" FontAttributes="Bold" TextColor="#EF4444" HorizontalOptions="Center" />
+                                <Label x:Name="MonthlyCaloriesLabel" Text="0 kcal" FontSize="15" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" HorizontalOptions="Center" />
+                            </VerticalStackLayout>
+                        </Border>
+                    </Grid>
+                </VerticalStackLayout>
             </Border>
 
-            <!-- Selected Date Workout Details -->
-            <Border BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1E1E2E}" 
-                    Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#2A2A3D}"
-                    StrokeShape="RoundRectangle 16"
-                    Padding="16">
+            <!-- 3. WORKOUT SESSIONS FOR SELECTED DAY -->
+            <Border BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1E293B}"
+                    Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}"
+                    StrokeShape="RoundRectangle 20" Padding="16">
                 <VerticalStackLayout Spacing="12">
+                    <Label x:Name="SelectedDayHeaderLabel" Text="Selected Day Logs" FontSize="14" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
 
-                    <!-- Single Selected Date Header -->
-                    <Label x:Name="SelectedDateLabel" 
-                           Text="Aug 27, 2026" 
-                           FontSize="16" 
-                           FontAttributes="Bold" 
-                           TextColor="{AppThemeBinding Light=#1A1A1A, Dark=#FFFFFF}" />
-
-                    <!-- Daily Aggregates -->
-                    <Grid ColumnDefinitions="*, *">
-                        <Label x:Name="DaySetsLabel" Text="Sets: 0" FontSize="14" TextColor="{AppThemeBinding Light=#6C757D, Dark=#A6ADC8}" />
-                        <Label Grid.Column="1" x:Name="DayJumpsLabel" Text="Jumps: 0" FontSize="14" FontAttributes="Bold" TextColor="#89B4FA" HorizontalOptions="End" />
-                    </Grid>
-
-                    <!-- Empty State Placeholder -->
-                    <Label x:Name="EmptyStateLabel"
-                           Text="No workouts logged for this date."
-                           TextColor="{AppThemeBinding Light=#6C757D, Dark=#6C7086}"
-                           HorizontalOptions="Center"
-                           Margin="0,15"
-                           IsVisible="True" />
-
-                    <!-- Dynamic Session List for Selected Date -->
-                    <CollectionView x:Name="DayWorkoutsListView" IsVisible="False" Margin="0,5,0,0">
+                    <CollectionView x:Name="DayWorkoutsCollectionView" EmptyView="No workout sessions recorded for this date.">
                         <CollectionView.ItemTemplate>
                             <DataTemplate>
-                                <Border BackgroundColor="{AppThemeBinding Light=#F0F0F5, Dark=#2B2B3D}"
-                                        StrokeThickness="0"
-                                        Margin="0,0,0,8"
-                                        Padding="12"
-                                        StrokeShape="RoundRectangle 8">
-                                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
-                                        <Label Text="{Binding WorkoutType}"
-                                               TextColor="{AppThemeBinding Light=#1A1A1A, Dark=#FFFFFF}"
-                                               FontAttributes="Bold"
-                                               FontSize="14" />
-                                        <Label Grid.Column="1"
-                                               Text="{Binding Date, StringFormat='{0:h:mm tt}'}"
-                                               TextColor="#A6ADC8"
-                                               FontSize="12" />
-                                        <Label Grid.Row="1" Grid.ColumnSpan="2"
-                                               Text="{Binding TotalJumps, StringFormat='{0} jumps completed'}"
-                                               TextColor="#89B4FA"
-                                               FontSize="12"
-                                               Margin="0,4,0,0" />
-                                    </Grid>
-                                </Border>
+                                <SwipeView>
+                                    <SwipeView.RightItems>
+                                        <SwipeItems>
+                                            <SwipeItem Text="Delete" BackgroundColor="#EF4444" Invoked="OnDeleteWorkoutInvoked" CommandParameter="{Binding .}" />
+                                        </SwipeItems>
+                                    </SwipeView.RightItems>
+
+                                    <Border BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}"
+                                            Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}"
+                                            StrokeShape="RoundRectangle 12" Padding="12" Margin="0,0,0,10">
+                                        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                                            <VerticalStackLayout Grid.Row="0" Grid.Column="0" Spacing="2">
+                                                <Label Text="{Binding WorkoutType}" FontAttributes="Bold" FontSize="14" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
+                                                <Label Text="{Binding Date, StringFormat='{0:hh:mm tt}'}" FontSize="11" TextColor="{AppThemeBinding Light=#64748B, Dark=#94A3B8}" />
+                                            </VerticalStackLayout>
+
+                                            <VerticalStackLayout Grid.Row="0" Grid.Column="1" HorizontalOptions="End" Spacing="2">
+                                                <Label Text="{Binding TotalJumps, StringFormat='{0:N0} jumps'}" FontAttributes="Bold" FontSize="14" TextColor="#6366F1" HorizontalOptions="End" />
+                                                <Label Text="{Binding CaloriesBurned, StringFormat='{0:N0} kcal'}" FontSize="11" TextColor="#EF4444" HorizontalOptions="End" />
+                                            </VerticalStackLayout>
+
+                                            <HorizontalStackLayout Grid.Row="1" Grid.ColumnSpan="2" Spacing="16" Margin="0,8,0,0">
+                                                <Label Text="{Binding SetsCompleted, StringFormat='Sets: {0}'}" FontSize="11" TextColor="{AppThemeBinding Light=#64748B, Dark=#94A3B8}" />
+                                                <Label Text="{Binding DurationSeconds, StringFormat='Duration: {0}s'}" FontSize="11" TextColor="{AppThemeBinding Light=#64748B, Dark=#94A3B8}" />
+                                            </HorizontalStackLayout>
+                                        </Grid>
+                                    </Border>
+                                </SwipeView>
                             </DataTemplate>
                         </CollectionView.ItemTemplate>
                     </CollectionView>
-
                 </VerticalStackLayout>
             </Border>
 
