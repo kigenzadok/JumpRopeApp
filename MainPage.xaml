@@ -2,217 +2,157 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="JumpRopeApp.MainPage"
-             BackgroundColor="{AppThemeBinding Light=#F8F9FA, Dark=#121212}"
-             Title="Jump Rope Routine">
+             BackgroundColor="{AppThemeBinding Light=#F4F5F9, Dark=#0F172A}"
+             Title="Workout Timer">
 
-    <ScrollView Padding="20">
-        <VerticalStackLayout Spacing="24" MaximumWidthRequest="500">
+    <Grid>
+        <ScrollView Padding="20">
+            <VerticalStackLayout Spacing="20" MaximumWidthRequest="480">
 
-            <!-- ========================================== -->
-            <!-- 1. CONFIG VIEW (Routine Setup)             -->
-            <!-- ========================================== -->
-            <VerticalStackLayout x:Name="ConfigView" IsVisible="True" Spacing="20">
-
-                <!-- Header Card with App Logo -->
-                <Border BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1E1E2E}" 
-                        Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#2A2A3D}"
-                        StrokeShape="RoundRectangle 16"
-                        Padding="20">
+                <!-- 1. PRESET WORKOUT CHIPS -->
+                <Border BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1E293B}"
+                        Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}"
+                        StrokeShape="RoundRectangle 16" Padding="12">
                     <VerticalStackLayout Spacing="8">
-                        <!-- Logo Graphic -->
-                        <Label Text="Configure your intervals or pick a preset routine" 
-                               FontSize="13" 
-                               HorizontalOptions="Center" 
-                               TextColor="{AppThemeBinding Light=#6C757D, Dark=#A0A0B2}" />
-                    </VerticalStackLayout>
-                </Border>
-                
-                <!-- Interval Inputs Section -->
-                <Border BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1E1E2E}" 
-                        Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#2A2A3D}"
-                        StrokeShape="RoundRectangle 16"
-                        Padding="16">
-                    <VerticalStackLayout Spacing="16">
+                        <Label Text="Quick Presets" FontSize="12" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#64748B, Dark=#94A3B8}" />
 
-                        <!-- Jump Time Control -->
-                        <Grid ColumnDefinitions="*, Auto, *" ColumnSpacing="10" VerticalOptions="Center">
-                            <Button Grid.Column="0" Text="-" Clicked="OnDecreaseJumpClicked" 
-                                    BackgroundColor="{AppThemeBinding Light=#F0F0F5, Dark=#2D2D3F}" 
-                                    TextColor="{AppThemeBinding Light=#4A4A6A, Dark=#E0E0FF}" CornerRadius="10" FontAttributes="Bold" />
-                            <HorizontalStackLayout Grid.Column="1" Spacing="4" HorizontalOptions="Center">
-                                <Label Text="Jump:" VerticalOptions="Center" FontSize="15" TextColor="{AppThemeBinding Light=#6C757D, Dark=#A0A0B2}" />
-                                <Label x:Name="JumpSecsLabel" Text="30" FontSize="18" FontAttributes="Bold" VerticalOptions="Center" TextColor="{AppThemeBinding Light=#1A1A1A, Dark=#FFFFFF}" />
-                                <Label Text="s" VerticalOptions="Center" FontSize="15" TextColor="{AppThemeBinding Light=#6C757D, Dark=#A0A0B2}" />
-                            </HorizontalStackLayout>
-                            <Button Grid.Column="2" Text="+" Clicked="OnIncreaseJumpClicked" 
-                                    BackgroundColor="{AppThemeBinding Light=#F0F0F5, Dark=#2D2D3F}" 
-                                    TextColor="{AppThemeBinding Light=#4A4A6A, Dark=#E0E0FF}" CornerRadius="10" FontAttributes="Bold" />
-                        </Grid>
-
-                        <BoxView HeightRequest="1" Color="{AppThemeBinding Light=#E0E0E0, Dark=#2A2A3D}" Opacity="0.6" />
-
-                        <!-- Rest Time Control -->
-                        <Grid ColumnDefinitions="*, Auto, *" ColumnSpacing="10" VerticalOptions="Center">
-                            <Button Grid.Column="0" Text="-" Clicked="OnDecreaseRestClicked" 
-                                    BackgroundColor="{AppThemeBinding Light=#F0F0F5, Dark=#2D2D3F}" 
-                                    TextColor="{AppThemeBinding Light=#4A4A6A, Dark=#E0E0FF}" CornerRadius="10" FontAttributes="Bold" />
-                            <HorizontalStackLayout Grid.Column="1" Spacing="4" HorizontalOptions="Center">
-                                <Label Text="Rest:" VerticalOptions="Center" FontSize="15" TextColor="{AppThemeBinding Light=#6C757D, Dark=#A0A0B2}" />
-                                <Label x:Name="RestSecsLabel" Text="15" FontSize="18" FontAttributes="Bold" VerticalOptions="Center" TextColor="{AppThemeBinding Light=#1A1A1A, Dark=#FFFFFF}" />
-                                <Label Text="s" VerticalOptions="Center" FontSize="15" TextColor="{AppThemeBinding Light=#6C757D, Dark=#A0A0B2}" />
-                            </HorizontalStackLayout>
-                            <Button Grid.Column="2" Text="+" Clicked="OnIncreaseRestClicked" 
-                                    BackgroundColor="{AppThemeBinding Light=#F0F0F5, Dark=#2D2D3F}" 
-                                    TextColor="{AppThemeBinding Light=#4A4A6A, Dark=#E0E0FF}" CornerRadius="10" FontAttributes="Bold" />
-                        </Grid>
-
-                        <BoxView HeightRequest="1" Color="{AppThemeBinding Light=#E0E0E0, Dark=#2A2A3D}" Opacity="0.6" />
-
-                        <!-- Sets Control -->
-                        <Grid ColumnDefinitions="*, Auto, *" ColumnSpacing="10" VerticalOptions="Center">
-                            <Button Grid.Column="0" Text="-" Clicked="OnDecreaseSetsClicked" 
-                                    BackgroundColor="{AppThemeBinding Light=#F0F0F5, Dark=#2D2D3F}" 
-                                    TextColor="{AppThemeBinding Light=#4A4A6A, Dark=#E0E0FF}" CornerRadius="10" FontAttributes="Bold" />
-                            <HorizontalStackLayout Grid.Column="1" Spacing="4" HorizontalOptions="Center">
-                                <Label Text="Sets:" VerticalOptions="Center" FontSize="15" TextColor="{AppThemeBinding Light=#6C757D, Dark=#A0A0B2}" />
-                                <Label x:Name="TargetSetsLabel" Text="5" FontSize="18" FontAttributes="Bold" VerticalOptions="Center" TextColor="{AppThemeBinding Light=#1A1A1A, Dark=#FFFFFF}" />
-                            </HorizontalStackLayout>
-                            <Button Grid.Column="2" Text="+" Clicked="OnIncreaseSetsClicked" 
-                                    BackgroundColor="{AppThemeBinding Light=#F0F0F5, Dark=#2D2D3F}" 
-                                    TextColor="{AppThemeBinding Light=#4A4A6A, Dark=#E0E0FF}" CornerRadius="10" FontAttributes="Bold" />
-                        </Grid>
-
-                    </VerticalStackLayout>
-                </Border>
-
-                <!-- Fitness Set Selector -->
-                <Border BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1E1E2E}" 
-                        Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#2A2A3D}"
-                        StrokeShape="RoundRectangle 16"
-                        Padding="16">
-                    <VerticalStackLayout Spacing="8">
-                        <Label Text="SELECT FITNESS SET" 
-                               FontSize="12" 
-                               FontAttributes="Bold" 
-                               TextColor="#6366F1" />
-
-                        <Picker x:Name="WorkoutTypePicker"
-                                Title="Choose Workout Type"
-                                TextColor="{AppThemeBinding Light=#1A1A1A, Dark=#FFFFFF}"
-                                SelectedIndexChanged="OnWorkoutTypeChanged">
-                            <Picker.ItemsSource>
-                                <x:Array Type="{x:Type x:String}">
-                                    <x:String>Basic Jumps</x:String>
-                                    <x:String>HIIT Speed Sets (20s / 10s)</x:String>
-                                    <x:String>Skill Sets (Double Unders)</x:String>
-                                    <x:String>Full-Body Mixed Circuit</x:String>
-                                </x:Array>
-                            </Picker.ItemsSource>
-                        </Picker>
-                    </VerticalStackLayout>
-                </Border>
-
-                <!-- Presets Section -->
-                <Border BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1E1E2E}" 
-                        Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#2A2A3D}"
-                        StrokeShape="RoundRectangle 16"
-                        Padding="16">
-                    <VerticalStackLayout Spacing="12">
-                        <Label Text="Presets" FontSize="16" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#1A1A1A, Dark=#FFFFFF}" />
-                        <Grid ColumnDefinitions="*, *" RowDefinitions="Auto, Auto" ColumnSpacing="10" RowSpacing="10">
-                            <Button Grid.Row="0" Grid.Column="0" Text="Beginner" Clicked="OnPresetBeginnerClicked" 
-                                    BackgroundColor="{AppThemeBinding Light=#EEF2FF, Dark=#272A45}" TextColor="#6366F1" CornerRadius="10" FontAttributes="Bold" />
-                            <Button Grid.Row="0" Grid.Column="1" Text="HIIT" Clicked="OnPresetHIITClicked" 
-                                    BackgroundColor="{AppThemeBinding Light=#FFF1F2, Dark=#3F1D28}" TextColor="#F43F5E" CornerRadius="10" FontAttributes="Bold" />
-                            <Button Grid.Row="1" Grid.Column="0" Text="Tabata" Clicked="OnPresetTabataClicked" 
-                                    BackgroundColor="{AppThemeBinding Light=#FEF3C7, Dark=#3A2E19}" TextColor="#D97706" CornerRadius="10" FontAttributes="Bold" />
-                            <Button Grid.Row="1" Grid.Column="1" Text="Endurance" Clicked="OnPresetEnduranceClicked" 
-                                    BackgroundColor="{AppThemeBinding Light=#ECFDF5, Dark=#163328}" TextColor="#10B981" CornerRadius="10" FontAttributes="Bold" />
+                        <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+                            <Button Text="Beginner" Clicked="OnPresetBeginnerClicked" HeightRequest="36" FontSize="11" CornerRadius="8" BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" TextColor="#6366F1" />
+                            <Button Grid.Column="1" Text="HIIT Burn" Clicked="OnPresetHiitClicked" HeightRequest="36" FontSize="11" CornerRadius="8" BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" TextColor="#10B981" />
+                            <Button Grid.Column="2" Text="Endurance" Clicked="OnPresetEnduranceClicked" HeightRequest="36" FontSize="11" CornerRadius="8" BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" TextColor="#F59E0B" />
                         </Grid>
                     </VerticalStackLayout>
                 </Border>
 
-                <!-- Main Start Action -->
-                <Button Text="START WORKOUT" 
-                        Clicked="OnStartWorkoutClicked" 
-                        BackgroundColor="#6366F1" 
-                        TextColor="White" 
-                        CornerRadius="14"
-                        HeightRequest="54" 
-                        FontAttributes="Bold" 
-                        FontSize="16" />
+                <!-- 2. CIRCULAR TIMER DISPLAY -->
+                <Border BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1E293B}"
+                        Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}"
+                        StrokeShape="RoundRectangle 24" Padding="20">
+                    <VerticalStackLayout Spacing="16" HorizontalOptions="Center">
+
+                        <!-- Status Badge -->
+                        <Border x:Name="StatusBadge" BackgroundColor="#6366F1" StrokeShape="RoundRectangle 12" Padding="16,6" HorizontalOptions="Center">
+                            <Label x:Name="StatusTextLabel" Text="READY" FontSize="13" FontAttributes="Bold" TextColor="White" />
+                        </Border>
+
+                        <!-- Circular Canvas Stack -->
+                        <Grid HeightRequest="220" WidthRequest="220">
+                            <GraphicsView x:Name="TimerGraphicsView" HeightRequest="220" WidthRequest="220" HorizontalOptions="Center" VerticalOptions="Center" />
+
+                            <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center" Spacing="2">
+                                <Label x:Name="TimerTextLabel" Text="00:30" FontSize="42" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" HorizontalOptions="Center" />
+                                <Label x:Name="CurrentSetTextLabel" Text="Set 1 of 8" FontSize="13" TextColor="{AppThemeBinding Light=#64748B, Dark=#94A3B8}" HorizontalOptions="Center" />
+                            </VerticalStackLayout>
+                        </Grid>
+
+                        <!-- Live Stats HUD -->
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="12" WidthRequest="260">
+                            <Border BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}" StrokeShape="RoundRectangle 12" Padding="10">
+                                <VerticalStackLayout Spacing="2">
+                                    <Label Text="EST. JUMPS" FontSize="9" FontAttributes="Bold" TextColor="#6366F1" HorizontalOptions="Center" />
+                                    <Label x:Name="LiveJumpsLabel" Text="0" FontSize="16" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" HorizontalOptions="Center" />
+                                </VerticalStackLayout>
+                            </Border>
+
+                            <Border Grid.Column="1" BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}" StrokeShape="RoundRectangle 12" Padding="10">
+                                <VerticalStackLayout Spacing="2">
+                                    <Label Text="CALORIES" FontSize="9" FontAttributes="Bold" TextColor="#EF4444" HorizontalOptions="Center" />
+                                    <Label x:Name="LiveCaloriesLabel" Text="0 kcal" FontSize="16" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" HorizontalOptions="Center" />
+                                </VerticalStackLayout>
+                            </Border>
+                        </Grid>
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- 3. TIMER CONFIGURATION CONTROLS -->
+                <Border BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1E293B}"
+                        Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}"
+                        StrokeShape="RoundRectangle 20" Padding="20">
+                    <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,*" RowSpacing="12" ColumnSpacing="12">
+
+                        <!-- Jump Time Input -->
+                        <VerticalStackLayout Grid.Row="0" Grid.Column="0" Spacing="4">
+                            <Label Text="Jump (sec)" FontSize="12" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#64748B, Dark=#94A3B8}" />
+                            <Border BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}" StrokeShape="RoundRectangle 12" Padding="12,2">
+                                <Entry x:Name="JumpSecsEntry" Text="30" Keyboard="Numeric" FontSize="14" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
+                            </Border>
+                        </VerticalStackLayout>
+
+                        <!-- Rest Time Input -->
+                        <VerticalStackLayout Grid.Row="0" Grid.Column="1" Spacing="4">
+                            <Label Text="Rest (sec)" FontSize="12" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#64748B, Dark=#94A3B8}" />
+                            <Border BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}" StrokeShape="RoundRectangle 12" Padding="12,2">
+                                <Entry x:Name="RestSecsEntry" Text="15" Keyboard="Numeric" FontSize="14" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
+                            </Border>
+                        </VerticalStackLayout>
+
+                        <!-- Sets Input -->
+                        <VerticalStackLayout Grid.Row="1" Grid.Column="0" Spacing="4">
+                            <Label Text="Total Sets" FontSize="12" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#64748B, Dark=#94A3B8}" />
+                            <Border BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}" StrokeShape="RoundRectangle 12" Padding="12,2">
+                                <Entry x:Name="TotalSetsEntry" Text="8" Keyboard="Numeric" FontSize="14" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
+                            </Border>
+                        </VerticalStackLayout>
+
+                        <!-- RPM / Cadence Input -->
+                        <VerticalStackLayout Grid.Row="1" Grid.Column="1" Spacing="4">
+                            <Label Text="Speed (RPM)" FontSize="12" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#64748B, Dark=#94A3B8}" />
+                            <Border BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}" StrokeShape="RoundRectangle 12" Padding="12,2">
+                                <Entry x:Name="RpmEntry" Text="120" Keyboard="Numeric" FontSize="14" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
+                            </Border>
+                        </VerticalStackLayout>
+
+                        <!-- Start / Reset Action Buttons -->
+                        <Button x:Name="StartStopButton" Grid.Row="2" Grid.Column="0" Text="Start Workout" Clicked="OnStartStopClicked" BackgroundColor="#6366F1" TextColor="White" FontAttributes="Bold" CornerRadius="12" HeightRequest="48" />
+                        <Button x:Name="ResetButton" Grid.Row="2" Grid.Column="1" Text="Reset" Clicked="OnResetClicked" BackgroundColor="{AppThemeBinding Light=#F1F5F9, Dark=#0F172A}" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" FontAttributes="Bold" CornerRadius="12" HeightRequest="48" />
+                    </Grid>
+                </Border>
+
             </VerticalStackLayout>
+        </ScrollView>
 
-            <!-- ========================================== -->
-            <!-- 2. ACTIVE VIEW (Live Timer Screen)         -->
-            <!-- ========================================== -->
-            <VerticalStackLayout x:Name="ActiveView" IsVisible="False" Spacing="24" VerticalOptions="Center">
-                <Border BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1E1E2E}" 
-                        Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#2A2A3D}"
-                        StrokeShape="RoundRectangle 20"
-                        Padding="30">
-                    <VerticalStackLayout Spacing="20">
-                        <Label x:Name="StatusLabel" Text="JUMP!" FontSize="32" FontAttributes="Bold" HorizontalOptions="Center" TextColor="#10B981" />
+        <!-- 4. POST-WORKOUT SUMMARY OVERLAY MODAL -->
+        <Border x:Name="SummaryModalOverlay" IsVisible="False" BackgroundColor="#CC0F172A" Padding="20">
+            <Border BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1E293B}"
+                    Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}"
+                    StrokeShape="RoundRectangle 24" Padding="24" MaximumWidthRequest="380" VerticalOptions="Center">
+                <VerticalStackLayout Spacing="16" HorizontalOptions="Center">
+                    <Label Text="🎉 Workout Complete!" FontSize="22" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" HorizontalOptions="Center" />
 
-                        <Label x:Name="TimerLabel" Text="30" FontSize="80" FontAttributes="Bold" HorizontalOptions="Center" TextColor="{AppThemeBinding Light=#1A1A1A, Dark=#FFFFFF}" />
+                    <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,*" RowSpacing="10" ColumnSpacing="10" WidthRequest="280">
+                        <Border Grid.Row="0" Grid.Column="0" BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" StrokeShape="RoundRectangle 12" Padding="12">
+                            <VerticalStackLayout Spacing="2">
+                                <Label Text="TOTAL JUMPS" FontSize="9" FontAttributes="Bold" TextColor="#6366F1" HorizontalOptions="Center" />
+                                <Label x:Name="SummaryJumpsLabel" Text="0" FontSize="18" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" HorizontalOptions="Center" />
+                            </VerticalStackLayout>
+                        </Border>
 
-                        <Label x:Name="SetInfoLabel" Text="Set 1 of 5" FontSize="18" HorizontalOptions="Center" TextColor="{AppThemeBinding Light=#6C757D, Dark=#A0A0B2}" />
-                    </VerticalStackLayout>
-                </Border>
+                        <Border Grid.Row="0" Grid.Column="1" BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" StrokeShape="RoundRectangle 12" Padding="12">
+                            <VerticalStackLayout Spacing="2">
+                                <Label Text="SETS" FontSize="9" FontAttributes="Bold" TextColor="#10B981" HorizontalOptions="Center" />
+                                <Label x:Name="SummarySetsLabel" Text="0" FontSize="18" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" HorizontalOptions="Center" />
+                            </VerticalStackLayout>
+                        </Border>
 
-                <Button Text="END WORKOUT EARLY" 
-                        Clicked="OnEndWorkoutClicked" 
-                        BackgroundColor="#EF4444" 
-                        TextColor="White" 
-                        CornerRadius="14"
-                        HeightRequest="50" 
-                        FontAttributes="Bold" />
-            </VerticalStackLayout>
+                        <Border Grid.Row="1" Grid.Column="0" BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" StrokeShape="RoundRectangle 12" Padding="12">
+                            <VerticalStackLayout Spacing="2">
+                                <Label Text="DURATION" FontSize="9" FontAttributes="Bold" TextColor="#F59E0B" HorizontalOptions="Center" />
+                                <Label x:Name="SummaryDurationLabel" Text="0m 0s" FontSize="18" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" HorizontalOptions="Center" />
+                            </VerticalStackLayout>
+                        </Border>
 
-            <!-- ========================================== -->
-            <!-- 3. SUMMARY VIEW (Save & Exit Screen)      -->
-            <!-- ========================================== -->
-            <VerticalStackLayout x:Name="SummaryView" IsVisible="False" Spacing="20">
-                <Label Text="Workout Summary" FontSize="24" FontAttributes="Bold" HorizontalOptions="Center" TextColor="{AppThemeBinding Light=#1A1A1A, Dark=#FFFFFF}" />
+                        <Border Grid.Row="1" Grid.Column="1" BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" StrokeShape="RoundRectangle 12" Padding="12">
+                            <VerticalStackLayout Spacing="2">
+                                <Label Text="CALORIES" FontSize="9" FontAttributes="Bold" TextColor="#EF4444" HorizontalOptions="Center" />
+                                <Label x:Name="SummaryCaloriesLabel" Text="0 kcal" FontSize="18" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" HorizontalOptions="Center" />
+                            </VerticalStackLayout>
+                        </Border>
+                    </Grid>
 
-                <!-- Stats Card -->
-                <Border BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1E1E2E}" 
-                        Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#2A2A3D}" 
-                        StrokeShape="RoundRectangle 16" 
-                        Padding="20">
-                    <VerticalStackLayout Spacing="12">
-                        <Label x:Name="CompletedSetsLabel" Text="Sets Completed: 0" FontSize="16" TextColor="{AppThemeBinding Light=#1A1A1A, Dark=#FFFFFF}" />
-                        <BoxView HeightRequest="1" Color="{AppThemeBinding Light=#E0E0E0, Dark=#2A2A3D}" Opacity="0.6" />
-                        <Label x:Name="TotalJumpsLabel" Text="Total Jumps Recorded: 0" FontSize="20" FontAttributes="Bold" TextColor="#6366F1" />
-                    </VerticalStackLayout>
-                </Border>
+                    <Button Text="Save &amp; Close" Clicked="OnCloseSummaryClicked" BackgroundColor="#6366F1" TextColor="White" FontAttributes="Bold" CornerRadius="12" HeightRequest="48" HorizontalOptions="Fill" />
+                </VerticalStackLayout>
+            </Border>
+        </Border>
 
-                <!-- Log Jumps Card -->
-                <Border BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1E1E2E}" 
-                        Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#2A2A3D}" 
-                        StrokeShape="RoundRectangle 16" 
-                        Padding="16">
-                    <VerticalStackLayout Spacing="10">
-                        <Label Text="Log Additional Jumps" FontSize="14" TextColor="{AppThemeBinding Light=#6C757D, Dark=#A0A0B2}" />
-                        <Grid ColumnDefinitions="*, Auto" ColumnSpacing="10">
-                            <Entry Grid.Column="0" 
-                                   x:Name="JumpsLoggedEntry" 
-                                   Placeholder="Enter count..." 
-                                   PlaceholderColor="{AppThemeBinding Light=#A0A0A0, Dark=#6C757D}"
-                                   TextColor="{AppThemeBinding Light=#1A1A1A, Dark=#FFFFFF}" 
-                                   Keyboard="Numeric" />
-                            <Button Grid.Column="1" Text="Add" Clicked="OnAddJumpsClicked" BackgroundColor="#818CF8" TextColor="White" CornerRadius="10" />
-                        </Grid>
-                    </VerticalStackLayout>
-                </Border>
-
-                <!-- Save & Exit Action Buttons -->
-                <Grid ColumnDefinitions="*, *" ColumnSpacing="15" Margin="0,10,0,0">
-                    <Button Grid.Column="0" Text="Exit" Clicked="OnExitClicked" BackgroundColor="#EF4444" TextColor="White" HeightRequest="50" CornerRadius="12" FontAttributes="Bold" />
-                    <Button Grid.Column="1" Text="Save" Clicked="OnSaveWorkoutClicked" BackgroundColor="#10B981" TextColor="White" HeightRequest="50" CornerRadius="12" FontAttributes="Bold" />
-                </Grid>
-            </VerticalStackLayout>
-
-        </VerticalStackLayout>
-    </ScrollView>
+    </Grid>
 </ContentPage>

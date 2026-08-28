@@ -4,135 +4,156 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace JumpRopeApp;
 
 public class DatabaseService
 {
-    private SQLiteAsyncConnection? _database;
+    private SQLiteAsyncConnection? _db;
 
     private async Task InitAsync()
     {
-        if (_database is not null) return;
-
+        if (_db != null) return;
         var dbPath = Path.Combine(FileSystem.AppDataDirectory, "jumprope.db3");
-        _database = new SQLiteAsyncConnection(dbPath);
-
-        await _database.CreateTableAsync<WorkoutRecord>();
-        await _database.CreateTableAsync<UserProfile>();
+        _db = new SQLiteAsyncConnection(dbPath);
+        await _db.CreateTableAsync<WorkoutRecord>();
+        await _db.CreateTableAsync<UserProfile>();
     }
 
-    // ==========================================
-    // 1. CALENDAR & WORKOUT LOG QUERIES
-    // ==========================================
-
-    public async Task<List<WorkoutRecord>> GetWorkoutsForDateAsync(DateTime date)
+    public async Task<WorkoutRecord> SaveWorkoutAsync(WorkoutRecord record)
     {
         await InitAsync();
-        if (_database == null) return new List<WorkoutRecord>();
-
-        DateTime startOfDay = date.Date;
-        DateTime endOfDay = startOfDay.AddDays(1);
-
-        return await _database.Table<WorkoutRecord>()
-                              .Where(w => w.Date >= startOfDay && w.Date < endOfDay)
-                              .OrderByDescending(w => w.Date)
-                              .ToListAsync();
+        await _db!.InsertAsync(record);
+        return record;
     }
 
-    public async Task<(int Sets, int Jumps)> GetDayStatsAsync(DateTime date)
-    {
-        var records = await GetWorkoutsForDateAsync(date);
-        int totalSets = records?.Sum(r => r.SetsCompleted) ?? 0;
-        int totalJumps = records?.Sum(r => r.TotalJumps) ?? 0;
-        return (totalSets, totalJumps);
-    }
-
-    public async Task<int> GetCurrentStreakAsync()
+    public async Task DeleteWorkoutAsync(WorkoutRecord record)
     {
         await InitAsync();
-        if (_database == null) return 0;
+        await _db!.DeleteAsync(record);
+    }
 
-        var allWorkouts = await _database.Table<WorkoutRecord>().ToListAsync();
-        if (allWorkouts == null || !allWorkouts.Any()) return 0;
+    public async Task<List<WorkoutRecord>> GetWorkoutsAsync()
+    {
+        await InitAsync();
+        return await _db!.Table<WorkoutRecord>().OrderByDescending(w => w.Date).ToListAsync();
+    }
 
-        var workoutDates = allWorkouts.Select(w => w.Date.Date).Distinct().OrderByDescending(d => d).ToList();
+    // Profile Methods
+    public async Task<UserProfile> GetProfileAsync()
+    {
+        await InitAsync();
+        var profile = await _db!.Table<UserProfile>().FirstOrDefaultAsync();
+        if (profile == null)
+        {
+            profile = new UserProfile();
+            await _db.InsertAsync(profile);
+        }
+        return profile;
+    }
+
+    public async Task SaveProfileAsync(UserProfile profile)
+    {
+        await InitAsync();
+        await _db!.InsertOrReplaceAsync(profile);
+    }
+
+    public async Task SaveOrUpdateProfileAsync(UserProfile profile)
+    {
+        await SaveProfileAsync(profile);
+    }
+
+    // Lifetime Aggregation Helper
+    public async Task<(int totalJumps, int totalSets, int totalWorkouts, double totalCalories)> GetLifetimeStatsAsync()
+    {
+        var workouts = await GetWorkoutsAsync();
+        if (workouts.Count == 0) return (0, 0, 0, 0);
+
+        int jumps = workouts.Sum(w => w.TotalJumps);
+        int sets = workouts.Sum(w => w.SetsCompleted);
+        int count = workouts.Count;
+        double calories = workouts.Sum(w => w.CaloriesBurned);
+
+        return (jumps, sets, count, calories);
+    }
+
+    // Daily Stats Helper
+    public async Task<(int todaySets, int todayJumps)> GetDayStatsAsync(DateTime date)
+    {
+        var workouts = await GetWorkoutsAsync();
+        var dayRecords = workouts.Where(w => w.Date.Date == date.Date).ToList();
+
+        int sets = dayRecords.Sum(w => w.SetsCompleted);
+        int jumps = dayRecords.Sum(w => w.TotalJumps);
+
+        return (sets, jumps);
+    }
+
+    // Personal Records Helper
+    public async Task<(int maxJumps, int maxSets, int streak)> GetPersonalRecordsAsync()
+    {
+        var workouts = await GetWorkoutsAsync();
+        if (workouts.Count == 0) return (0, 0, 0);
+
+        int maxJumps = workouts.Max(w => w.TotalJumps);
+        int maxSets = workouts.Max(w => w.SetsCompleted);
+
+        // Calculate current consecutive day streak
         int streak = 0;
-        DateTime checkDate = DateTime.Now.Date;
+        var uniqueDates = workouts.Select(w => w.Date.Date).Distinct().OrderByDescending(d => d).ToList();
 
-        if (!workoutDates.Contains(checkDate)) checkDate = checkDate.AddDays(-1);
+        DateTime checkDate = DateTime.Today;
+        if (!uniqueDates.Contains(checkDate))
+        {
+            checkDate = checkDate.AddDays(-1);
+        }
 
-        while (workoutDates.Contains(checkDate))
+        while (uniqueDates.Contains(checkDate))
         {
             streak++;
             checkDate = checkDate.AddDays(-1);
         }
 
-        return streak;
+        return (maxJumps, maxSets, streak);
     }
 
-    public async Task SaveWorkoutAsync(WorkoutRecord record)
+    // Weekly Totals Helper
+    // Weekly Jump Totals Helper returning Day Name + Jumps tuple
+    public async Task<List<(string DayName, int Jumps)>> GetWeeklyJumpTotalsAsync()
     {
-        await InitAsync();
-        if (_database != null) await _database.InsertAsync(record);
-    }
+        var workouts = await GetWorkoutsAsync();
+        var weeklyTotals = new List<(string DayName, int Jumps)>();
 
-    public async Task ClearAllWorkoutsAsync()
-    {
-        await InitAsync();
-        if (_database != null)
+        for (int i = 6; i >= 0; i--)
         {
-            await _database.DeleteAllAsync<WorkoutRecord>();
+            var targetDate = DateTime.Today.AddDays(-i);
+            int jumps = workouts.Where(w => w.Date.Date == targetDate.Date).Sum(w => w.TotalJumps);
+            string dayName = targetDate.ToString("ddd"); // "Mon", "Tue", etc.
+
+            weeklyTotals.Add((dayName, jumps));
         }
+
+        return weeklyTotals;
     }
 
-    // ==========================================
-    // 2. LIFETIME ANALYTICS
-    // ==========================================
-
-    public async Task<(int TotalJumps, int TotalSets, int TotalWorkouts)> GetLifetimeStatsAsync()
+    // CSV Export Helper
+    public async Task<string> ExportWorkoutsToCsvAsync()
     {
-        await InitAsync();
-        if (_database == null) return (0, 0, 0);
+        var workouts = await GetWorkoutsAsync();
+        var sb = new StringBuilder();
 
-        var allRecords = await _database.Table<WorkoutRecord>().ToListAsync();
+        sb.AppendLine("Id,Date,WorkoutType,SetsCompleted,TotalJumps,DurationSeconds,CaloriesBurned");
 
-        int totalJumps = allRecords?.Sum(r => r.TotalJumps) ?? 0;
-        int totalSets = allRecords?.Sum(r => r.SetsCompleted) ?? 0;
-        int totalWorkouts = allRecords?.Count ?? 0;
-
-        return (totalJumps, totalSets, totalWorkouts);
-    }
-
-    // ==========================================
-    // 3. USER PROFILE CRUD OPERATIONS
-    // ==========================================
-
-    public async Task<UserProfile?> GetProfileAsync()
-    {
-        await InitAsync();
-        if (_database == null) return null;
-        return await _database.Table<UserProfile>().FirstOrDefaultAsync();
-    }
-
-    public async Task SaveOrUpdateProfileAsync(UserProfile profile)
-    {
-        await InitAsync();
-        if (_database == null) return;
-
-        if (profile.Id == 0)
-            await _database.InsertAsync(profile);
-        else
-            await _database.UpdateAsync(profile);
-    }
-
-    public async Task DeleteProfileAsync(UserProfile profile)
-    {
-        await InitAsync();
-        if (_database != null)
+        foreach (var w in workouts)
         {
-            await _database.DeleteAsync(profile);
+            sb.AppendLine($"{w.Id},{w.Date:yyyy-MM-dd HH:mm:ss},\"{w.WorkoutType}\",{w.SetsCompleted},{w.TotalJumps},{w.DurationSeconds},{w.CaloriesBurned}");
         }
+
+        string filePath = Path.Combine(FileSystem.CacheDirectory, "workout_history_export.csv");
+        await File.WriteAllTextAsync(filePath, sb.ToString());
+
+        return filePath;
     }
 }
