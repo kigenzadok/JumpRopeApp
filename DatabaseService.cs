@@ -20,6 +20,8 @@ public class DatabaseService
         _db = new SQLiteAsyncConnection(dbPath);
         await _db.CreateTableAsync<WorkoutRecord>();
         await _db.CreateTableAsync<UserProfile>();
+        await _db.CreateTableAsync<Routine>();
+        await _db.CreateTableAsync<RoutineStep>();
     }
 
     public async Task<WorkoutRecord> SaveWorkoutAsync(WorkoutRecord record)
@@ -156,4 +158,119 @@ public class DatabaseService
 
         return filePath;
     }
+
+    public async Task<(int Level, int CurrentXp, int NextLevelXp, double Progress)> GetUserLevelAsync()
+    {
+        var workouts = await GetWorkoutsAsync();
+        int totalJumps = workouts.Sum(w => w.TotalJumps);
+        int totalCalories = (int)workouts.Sum(w => w.CaloriesBurned);
+
+        // 1 Jump = 1 XP, 1 Calorie = 5 XP
+        int totalXp = totalJumps + (totalCalories * 5);
+
+        int level = 1;
+        int xpForNext = 1000;
+        int xpAccumulated = totalXp;
+
+        while (xpAccumulated >= xpForNext)
+        {
+            xpAccumulated -= xpForNext;
+            level++;
+            xpForNext = (int)(xpForNext * 1.25);
+        }
+
+        double progress = (double)xpAccumulated / xpForNext;
+        return (level, xpAccumulated, xpForNext, progress);
+    }
+
+    public async Task<List<Achievement>> GetAchievementsAsync()
+    {
+        var workouts = await GetWorkoutsAsync();
+        var (maxJumps, maxSets, streak) = await GetPersonalRecordsAsync();
+        int totalJumps = workouts.Sum(w => w.TotalJumps);
+        int totalWorkouts = workouts.Count;
+
+        var badges = new List<Achievement>
+        {
+            new Achievement
+            {
+                Id = "first_step",
+                Title = "First Jump",
+                Description = "Complete your first workout session.",
+                Icon = "👟",
+                Target = 1,
+                Progress = Math.Min(totalWorkouts, 1),
+                IsUnlocked = totalWorkouts >= 1
+            },
+            new Achievement
+            {
+                Id = "century_club",
+                Title = "Century Club",
+                Description = "Complete 100 total sets across all workouts.",
+                Icon = "💯",
+                Target = 100,
+                Progress = Math.Min(workouts.Sum(w => w.SetsCompleted), 100),
+                IsUnlocked = workouts.Sum(w => w.SetsCompleted) >= 100
+            },
+            new Achievement
+            {
+                Id = "streak_master",
+                Title = "On Fire",
+                Description = "Reach a 7-day daily jump streak.",
+                Icon = "🔥",
+                Target = 7,
+                Progress = Math.Min(streak, 7),
+                IsUnlocked = streak >= 7
+            },
+            new Achievement
+            {
+                Id = "jump_master",
+                Title = "10k Jumper",
+                Description = "Accumulate 10,000 lifetime jumps.",
+                Icon = "⚡",
+                Target = 10000,
+                Progress = Math.Min(totalJumps, 10000),
+                IsUnlocked = totalJumps >= 10000
+            },
+            new Achievement
+            {
+                Id = "iron_legs",
+                Title = "Iron Legs",
+                Description = "Complete a single session with over 1,000 jumps.",
+                Icon = "🏋️",
+                Target = 1000,
+                Progress = Math.Min(maxJumps, 1000),
+                IsUnlocked = maxJumps >= 1000
+            }
+        };
+
+        return badges;
+    }
+    public async Task SaveRoutineAsync(Routine routine, List<RoutineStep> steps)
+    {
+        await InitAsync();
+        await _db!.InsertAsync(routine);
+
+        foreach (var step in steps)
+        {
+            step.RoutineId = routine.Id;
+            await _db.InsertAsync(step);
+        }
+    }
+
+    public async Task<List<Routine>> GetRoutinesAsync()
+    {
+        await InitAsync();
+        return await _db!.Table<Routine>().ToListAsync();
+    }
+
+    public async Task<List<RoutineStep>> GetRoutineStepsAsync(int routineId)
+    {
+        await InitAsync();
+        return await _db!.Table<RoutineStep>()
+                         .Where(s => s.RoutineId == routineId)
+                         .OrderBy(s => s.StepOrder)
+                         .ToListAsync();
+    }
+
 }

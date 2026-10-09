@@ -18,6 +18,12 @@
         <Tab Title="Stats" Icon="dotnet_bot.png">
             <ShellContent ContentTemplate="{DataTemplate local:StatsPage}" Route="StatsPage" />
         </Tab>
+        <Tab Title="Achievements" Icon="dotnet_bot.png">
+            <ShellContent ContentTemplate="{DataTemplate local:AchievementsPage}" Route="AchievementsPage" />
+        </Tab>
+        <Tab Title="Routines" Icon="dotnet_bot.png">
+            <ShellContent ContentTemplate="{DataTemplate local:RoutinesPage}" Route="RoutinesPage" />
+        </Tab>
     </TabBar>
 
 </Shell>
