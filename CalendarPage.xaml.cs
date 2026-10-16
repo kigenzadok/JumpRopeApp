@@ -27,15 +27,18 @@ public partial class CalendarPage : ContentPage
     private async Task RefreshDataAsync()
     {
         _allWorkouts = await _dbService.GetWorkoutsAsync();
-        UpdateMonthlySummary(WorkoutDatePicker.Date);
-        FilterDayWorkouts(WorkoutDatePicker.Date);
+        UpdateMonthlySummary(WorkoutDatePicker.Date ?? DateTime.Today);
+        FilterDayWorkouts(WorkoutDatePicker.Date ?? DateTime.Today);
     }
 
-    private void OnDateSelected(object sender, DateChangedEventArgs e)
-    {
-        UpdateMonthlySummary(e.NewDate);
-        FilterDayWorkouts(e.NewDate);
-    }
+   private void OnDateSelected(object sender, DateChangedEventArgs e)
+{
+    // Fallback to today's date if e.NewDate happens to be null
+    DateTime selectedDate = e.NewDate ?? DateTime.Today;
+
+    UpdateMonthlySummary(selectedDate);
+    FilterDayWorkouts(selectedDate);
+}
 
     private void FilterDayWorkouts(DateTime targetDate)
     {
@@ -70,7 +73,7 @@ public partial class CalendarPage : ContentPage
     {
         if (sender is SwipeItem swipeItem && swipeItem.CommandParameter is WorkoutRecord record)
         {
-            bool confirm = await DisplayAlert("Confirm Delete", "Are you sure you want to delete this workout log?", "Delete", "Cancel");
+            bool confirm = await DisplayAlertAsync("Confirm Delete", "Are you sure you want to delete this workout log?", "Delete", "Cancel");
             if (confirm)
             {
                 await _dbService.DeleteWorkoutAsync(record);

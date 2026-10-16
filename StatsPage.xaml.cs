@@ -175,13 +175,13 @@ public partial class StatsPage : ContentPage
         }
         else
         {
-            await DisplayAlert("Error", "No workout data available to export.", "OK");
+            await DisplayAlertAsync("Error", "No workout data available to export.", "OK");
         }
     }
 
     public async void OnResetStatsClicked(object? sender, EventArgs e)
     {
-        bool confirm = await DisplayAlert("Reset Stats", "Are you sure you want to reset all lifetime stats?", "Yes", "No");
+        bool confirm = await DisplayAlertAsync("Reset Stats", "Are you sure you want to reset all lifetime stats?", "Yes", "No");
         if (confirm)
         {
             // ? Correct: reload the individual async tasks directly

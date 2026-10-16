@@ -28,5 +28,7 @@
 	</array>
 	<key>XSAppIconAssets</key>
 	<string>Assets.xcassets/appicon.appiconset</string>
+	<key>NSMotionUsageDescription</key>
+<value>JumpRopeApp uses the pedometer to track your total daily steps in the background.</value>
 </dict>
 </plist>

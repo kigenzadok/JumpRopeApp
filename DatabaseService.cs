@@ -187,64 +187,116 @@ public class DatabaseService
     {
         var workouts = await GetWorkoutsAsync();
         var (maxJumps, maxSets, streak) = await GetPersonalRecordsAsync();
-        int totalJumps = workouts.Sum(w => w.TotalJumps);
-        int totalWorkouts = workouts.Count;
 
-        var badges = new List<Achievement>
+        int totalJumps = workouts.Sum(w => w.TotalJumps);
+        int totalSets = workouts.Sum(w => w.SetsCompleted);
+        int totalCalories = (int)workouts.Sum(w => w.CaloriesBurned);
+
+        var badges = new List<Achievement>();
+
+        // -------------------------------------------------------------
+        // PART 1: MULTI-TIERED LIFETIME BADGES (Bronze -> Silver -> Gold -> Platinum)
+        // -------------------------------------------------------------
+        badges.Add(CreateTieredBadge(
+            "century_club", "Century Club", "Complete {0} total sets", "💯",
+            totalSets, new[] { 100, 500, 1000, 5000 }));
+
+        badges.Add(CreateTieredBadge(
+            "jump_master", "Jump Volume", "Accumulate {0:N0} total jumps", "⚡",
+            totalJumps, new[] { 10000, 50000, 100000, 500000 }));
+
+        badges.Add(CreateTieredBadge(
+            "streak_master", "On Fire", "Reach a {0}-day daily streak", "🔥",
+            streak, new[] { 7, 14, 30, 100 }));
+
+        badges.Add(CreateTieredBadge(
+            "calorie_burner", "Calorie Crusher", "Burn {0:N0} total calories", "🔥",
+            totalCalories, new[] { 1000, 5000, 25000, 100000 }));
+
+        // -------------------------------------------------------------
+        // PART 2: DYNAMIC WEEKLY CHALLENGES (Resets every Monday)
+        // -------------------------------------------------------------
+        DateTime startOfWeek = DateTime.Today.AddDays(-(int)DateTime.Today.DayOfWeek + (int)DayOfWeek.Monday);
+        var weeklyWorkouts = workouts.Where(w => w.Date.Date >= startOfWeek).ToList();
+
+        int weeklyJumps = weeklyWorkouts.Sum(w => w.TotalJumps);
+        int weeklySessions = weeklyWorkouts.Count;
+        int weeklyActiveMinutes = weeklyWorkouts.Sum(w => w.DurationSeconds) / 60;
+
+        badges.Add(new Achievement
         {
-            new Achievement
-            {
-                Id = "first_step",
-                Title = "First Jump",
-                Description = "Complete your first workout session.",
-                Icon = "👟",
-                Target = 1,
-                Progress = Math.Min(totalWorkouts, 1),
-                IsUnlocked = totalWorkouts >= 1
-            },
-            new Achievement
-            {
-                Id = "century_club",
-                Title = "Century Club",
-                Description = "Complete 100 total sets across all workouts.",
-                Icon = "💯",
-                Target = 100,
-                Progress = Math.Min(workouts.Sum(w => w.SetsCompleted), 100),
-                IsUnlocked = workouts.Sum(w => w.SetsCompleted) >= 100
-            },
-            new Achievement
-            {
-                Id = "streak_master",
-                Title = "On Fire",
-                Description = "Reach a 7-day daily jump streak.",
-                Icon = "🔥",
-                Target = 7,
-                Progress = Math.Min(streak, 7),
-                IsUnlocked = streak >= 7
-            },
-            new Achievement
-            {
-                Id = "jump_master",
-                Title = "10k Jumper",
-                Description = "Accumulate 10,000 lifetime jumps.",
-                Icon = "⚡",
-                Target = 10000,
-                Progress = Math.Min(totalJumps, 10000),
-                IsUnlocked = totalJumps >= 10000
-            },
-            new Achievement
-            {
-                Id = "iron_legs",
-                Title = "Iron Legs",
-                Description = "Complete a single session with over 1,000 jumps.",
-                Icon = "🏋️",
-                Target = 1000,
-                Progress = Math.Min(maxJumps, 1000),
-                IsUnlocked = maxJumps >= 1000
-            }
-        };
+            Id = $"weekly_jumps_{startOfWeek:yyyyMMdd}",
+            Title = "🎯 Weekly Target: 5,000 Jumps",
+            Description = "Log 5,000 jumps during the current week.",
+            Icon = "📅",
+            Category = "Weekly Challenge",
+            Target = 5000,
+            Progress = Math.Min(weeklyJumps, 5000),
+            IsUnlocked = weeklyJumps >= 5000
+        });
+
+        badges.Add(new Achievement
+        {
+            Id = $"weekly_consistency_{startOfWeek:yyyyMMdd}",
+            Title = "⏱️ Weekly Consistency",
+            Description = "Complete 3 workout sessions this week.",
+            Icon = "🏋️",
+            Category = "Weekly Challenge",
+            Target = 3,
+            Progress = Math.Min(weeklySessions, 3),
+            IsUnlocked = weeklySessions >= 3
+        });
+
+        badges.Add(new Achievement
+        {
+            Id = $"weekly_endurance_{startOfWeek:yyyyMMdd}",
+            Title = "⏳ Endurance Push",
+            Description = "Log 30 minutes of active jumping time this week.",
+            Icon = "⚡",
+            Category = "Weekly Challenge",
+            Target = 30,
+            Progress = Math.Min(weeklyActiveMinutes, 30),
+            IsUnlocked = weeklyActiveMinutes >= 30
+        });
 
         return badges;
+    }
+
+    private Achievement CreateTieredBadge(
+        string baseId, string title, string descriptionPattern, string icon,
+        int currentValue, int[] tiers)
+    {
+        int currentTierIndex = 0;
+
+        // Find current tier target
+        while (currentTierIndex < tiers.Length && currentValue >= tiers[currentTierIndex])
+        {
+            currentTierIndex++;
+        }
+
+        bool isFullyMaxed = currentTierIndex >= tiers.Length;
+        int target = isFullyMaxed ? tiers[^1] : tiers[currentTierIndex];
+
+        string tierLabel = currentTierIndex switch
+        {
+            0 => "Bronze",
+            1 => "Silver",
+            2 => "Gold",
+            3 => "Platinum",
+            _ => "Master"
+        };
+
+        return new Achievement
+        {
+            Id = $"{baseId}_tier_{currentTierIndex}",
+            Title = $"{title} ({tierLabel})",
+            Description = string.Format(descriptionPattern, target),
+            Icon = icon,
+            Category = "Lifetime",
+            Target = target,
+            Progress = Math.Min(currentValue, target),
+            IsUnlocked = currentValue >= target && isFullyMaxed
+        };
     }
     public async Task SaveRoutineAsync(Routine routine, List<RoutineStep> steps)
     {
@@ -271,6 +323,20 @@ public class DatabaseService
                          .Where(s => s.RoutineId == routineId)
                          .OrderBy(s => s.StepOrder)
                          .ToListAsync();
+    }
+    public async Task SaveDailyStepsAsync(DateTime date, int steps)
+    {
+        await InitAsync();
+
+        // Store daily step count in SQLite
+        var existingRecord = await _db!.Table<WorkoutRecord>()
+                                      .FirstOrDefaultAsync(w => w.Date.Date == date.Date);
+
+        if (existingRecord != null)
+        {
+            existingRecord.TotalSteps = steps;
+            await _db.UpdateAsync(existingRecord);
+        }
     }
 
 }

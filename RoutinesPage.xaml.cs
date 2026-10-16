@@ -31,7 +31,7 @@ public partial class RoutinesPage : ContentPage
     {
         if (string.IsNullOrWhiteSpace(RoutineNameEntry.Text))
         {
-            await DisplayAlert("Error", "Please enter a routine name.", "OK");
+            await DisplayAlertAsync("Error", "Please enter a routine name.", "OK");
             return;
         }
 
@@ -51,6 +51,6 @@ public partial class RoutinesPage : ContentPage
         await _dbService.SaveRoutineAsync(routine, steps);
         RoutineNameEntry.Text = string.Empty;
         await LoadRoutinesAsync();
-        await DisplayAlert("Success", "Routine saved successfully!", "OK");
+        await DisplayAlertAsync("Success", "Routine saved successfully!", "OK");
     }
 }

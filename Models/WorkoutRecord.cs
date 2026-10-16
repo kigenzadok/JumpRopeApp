@@ -16,4 +16,5 @@ public class WorkoutRecord
 
     public int JumpSecs { get; set; }
     public int RestSecs { get; set; }
+    public int TotalSteps { get; set; }
 }

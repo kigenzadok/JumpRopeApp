@@ -10,14 +10,13 @@ public class Achievement
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public string Icon { get; set; } = "🏆";
+    public string Category { get; set; } = "Lifetime"; // "Lifetime" or "Weekly Challenge"
     public bool IsUnlocked { get; set; }
-    public DateTime? UnlockedDate { get; set; }
     public int Progress { get; set; }
     public int Target { get; set; }
 
-    // Display Properties for Data Binding
     [Ignore]
-    public string StatusText => IsUnlocked ? "Unlocked 🎉" : $"{Progress}/{Target}";
+    public string StatusText => IsUnlocked ? "Completed 🎉" : $"{Progress:N0} / {Target:N0}";
 
     [Ignore]
     public string StatusColor => IsUnlocked ? "#10B981" : "#64748B";
