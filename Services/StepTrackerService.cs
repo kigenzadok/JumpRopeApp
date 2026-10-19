@@ -1,62 +1,77 @@
-﻿using Plugin.Maui.Pedometer;
-using Microsoft.Maui.ApplicationModel;
+﻿using Microsoft.Maui.Devices.Sensors;
 using System;
-using System.Threading.Tasks;
 
 namespace JumpRopeApp.Services;
 
 public class StepTrackerService
 {
-    private readonly IPedometer _pedometer = Pedometer.Default;
+    private bool _isTracking;
+    private DateTime _lastStepTime = DateTime.MinValue;
 
-    public bool IsSupported => _pedometer.IsSupported;
+    // --- ACCELEROMETER FINE-TUNING CONSTANTS ---
+    private const double MinStepG = 1.25;       // Minimum G-force peak for a walk step
+    private const double MaxStepG = 1.85;       // Maximum G-force (ignores strong phone shakes)
+    private const int MinStepIntervalMs = 320;  // Minimum time between valid steps (~180 steps/min max)
+    private const int MaxStepIntervalMs = 1200; // Maximum time allowed between steps in a walk cycle
+    private const int ConsecutiveStepBufferRequirement = 4; // Ignore single shakes/fidgets until 4 real steps happen
 
-    public async Task StartContinuousTrackingAsync(Action<int> onStepCountUpdated)
+    private int _bufferedSteps = 0;
+    private DateTime _lastBufferedStepTime = DateTime.MinValue;
+
+    public bool IsSupported => Accelerometer.Default.IsSupported;
+
+    public Task StartContinuousTrackingAsync(Action<int> onStepCountUpdated)
     {
-        try
-        {
-            if (!_pedometer.IsSupported) return;
+        if (_isTracking || !IsSupported) return Task.CompletedTask;
 
-            // Safe Main Thread Permission Dispatch
-            var status = await MainThread.InvokeOnMainThreadAsync(async () =>
+        Accelerometer.Default.ReadingChanged += (s, e) =>
+        {
+            var data = e.Reading.Acceleration;
+
+            // Calculate total G-force magnitude: sqrt(X^2 + Y^2 + Z^2)
+            double totalG = Math.Sqrt(data.X * data.X + data.Y * data.Y + data.Z * data.Z);
+            DateTime now = DateTime.Now;
+            double msSinceLastStep = (now - _lastStepTime).TotalMilliseconds;
+
+            // 1. FILTER OUT NOISE: G-force must fall in typical human walking bounds
+            if (totalG >= MinStepG && totalG <= MaxStepG && msSinceLastStep >= MinStepIntervalMs)
             {
-                var s = await Permissions.CheckStatusAsync<Permissions.Sensors>();
-                if (s != PermissionStatus.Granted)
+                double msSinceBufferedStep = (now - _lastBufferedStepTime).TotalMilliseconds;
+
+                // 2. CHECK RHYTHM: If time between movements is too long, reset buffer (it was just a single shake)
+                if (msSinceBufferedStep > MaxStepIntervalMs)
                 {
-                    s = await Permissions.RequestAsync<Permissions.Sensors>();
+                    _bufferedSteps = 0;
                 }
-                return s;
-            });
 
-            if (status != PermissionStatus.Granted) return;
+                _bufferedSteps++;
+                _lastBufferedStepTime = now;
+                _lastStepTime = now;
 
-            _pedometer.ReadingChanged += (sender, e) =>
-            {
-                int count = e.NumberOfSteps;
-
-                MainThread.BeginInvokeOnMainThread(() =>
+                // 3. BUFFER THRESHOLD: Only count as real walking if 4+ rhythmic steps happen continuously
+                if (_bufferedSteps >= ConsecutiveStepBufferRequirement)
                 {
-                    onStepCountUpdated?.Invoke(count);
-                });
-            };
+                    int stepsToAdd = (_bufferedSteps == ConsecutiveStepBufferRequirement) ? ConsecutiveStepBufferRequirement : 1;
 
-            _pedometer.Start();
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"StepTracker Exception: {ex.Message}");
-        }
+                    MainThread.BeginInvokeOnMainThread(() =>
+                    {
+                        onStepCountUpdated?.Invoke(App.DailyStepCount + stepsToAdd);
+                    });
+                }
+            }
+        };
+
+        Accelerometer.Default.Start(SensorSpeed.UI);
+        _isTracking = true;
+        return Task.CompletedTask;
     }
 
     public void StopTracking()
     {
-        try
+        if (_isTracking && IsSupported)
         {
-            if (_pedometer.IsSupported)
-            {
-                _pedometer.Stop();
-            }
+            Accelerometer.Default.Stop();
+            _isTracking = false;
         }
-        catch { }
     }
 }

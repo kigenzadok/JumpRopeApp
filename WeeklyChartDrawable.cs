@@ -1,58 +1,58 @@
 ﻿using Microsoft.Maui.Graphics;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace JumpRopeApp;
 
 public class WeeklyChartDrawable : IDrawable
 {
-    public List<(string DayName, int Jumps)> Data { get; set; } = new();
+    public List<string> DayLabels { get; set; } = new();
+    public List<int> DailyTotals { get; set; } = new();
 
     public void Draw(ICanvas canvas, RectF dirtyRect)
     {
+        if (DailyTotals == null || DailyTotals.Count == 0) return;
+
+        canvas.SaveState();
         canvas.Antialias = true;
-        if (Data == null || Data.Count == 0) return;
 
-        float paddingLeft = 10;
-        float paddingRight = 10;
-        float paddingTop = 20;
-        float paddingBottom = 25;
+        float width = dirtyRect.Width;
+        float height = dirtyRect.Height;
+        float padding = 24f;
+        float chartBottom = height - padding;
+        float chartHeight = height - (padding * 2);
 
-        float width = dirtyRect.Width - paddingLeft - paddingRight;
-        float height = dirtyRect.Height - paddingTop - paddingBottom;
+        int maxVal = DailyTotals.Max();
+        if (maxVal == 0) maxVal = 100;
 
-        int maxJumps = 1;
-        foreach (var item in Data)
+        float stepX = (width - (padding * 2)) / Math.Max(1, DailyTotals.Count - 1);
+
+        // Draw background grid lines
+        canvas.StrokeColor = Color.FromArgb("#334155");
+        canvas.StrokeSize = 1;
+        canvas.DrawLine(padding, chartBottom, width - padding, chartBottom);
+
+        // Plot bar points
+        for (int i = 0; i < DailyTotals.Count; i++)
         {
-            if (item.Jumps > maxJumps) maxJumps = item.Jumps;
-        }
+            float x = padding + (i * stepX);
+            float barHeight = (float)DailyTotals[i] / maxVal * chartHeight;
+            float y = chartBottom - barHeight;
 
-        float barWidth = (width / Data.Count) - 12;
-        float x = paddingLeft + 6;
+            // Bar background
+            canvas.FillColor = Color.FromArgb("#6366F1");
+            canvas.FillRoundedRectangle(x - 8, y, 16, barHeight, 4);
 
-        for (int i = 0; i < Data.Count; i++)
-        {
-            var item = Data[i];
-            float barHeight = (float)item.Jumps / maxJumps * height;
-            float y = dirtyRect.Height - paddingBottom - barHeight;
-
-            // Draw Bar Background Container
-            canvas.FillColor = Color.FromArgb("#1E293B");
-            canvas.FillRoundedRectangle(x, paddingTop, barWidth, height, 6);
-
-            // Draw Active Bar Value
-            if (barHeight > 0)
+            // Day label
+            if (i < DayLabels.Count)
             {
-                canvas.FillColor = Color.FromArgb("#6366F1");
-                canvas.FillRoundedRectangle(x, y, barWidth, barHeight, 6);
+                canvas.FontColor = Color.FromArgb("#94A3B8");
+                canvas.FontSize = 10;
+                canvas.DrawString(DayLabels[i], x - 15, chartBottom + 4, 30, 16, HorizontalAlignment.Center, VerticalAlignment.Top);
             }
-
-            // Draw Day Text Label
-            canvas.FontColor = Color.FromArgb("#94A3B8");
-            canvas.FontSize = 11;
-            canvas.DrawString(item.DayName, x + (barWidth / 2), dirtyRect.Height - 5, HorizontalAlignment.Center);
-
-            x += barWidth + 12;
         }
+
+        canvas.RestoreState();
     }
 }
