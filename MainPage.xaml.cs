@@ -1,267 +1,247 @@
 ﻿using JumpRopeApp.Models;
-using Microsoft.Maui.ApplicationModel;
-using Microsoft.Maui.Controls;
-using Microsoft.Maui.Media;
+using JumpRopeApp.Services; // or your correct namespace for services
+using Microsoft.Maui.Dispatching;
 using System;
-using System.Threading.Tasks;
+using System.Timers;
 
 namespace JumpRopeApp;
 
 public partial class MainPage : ContentPage
 {
     private readonly DatabaseService _dbService = new();
-    private readonly TimerRingDrawable _ringDrawable = new();
+    private readonly Services.MotionDetectorService _motionDetector = new();
 
-    private IDispatcherTimer? _timer;
-    private bool _isRunning = false;
-    private bool _isResting = false;
-
-    private int _jumpSecs = 30;
-    private int _restSecs = 15;
-    private int _totalSets = 8;
-    private int _rpm = 120;
-
+    private System.Timers.Timer? _workoutTimer;
+    private int _remainingSeconds = 30;
+    private int _totalDurationSeconds = 0;
+    private int _totalJumpsInWorkout = 0;
+    private double _totalCaloriesBurned = 0;
     private int _currentSet = 1;
-    private int _secondsRemaining = 30;
-    private int _totalWorkoutSeconds = 0;
-    private int _totalJumpsAccumulated = 0;
+    private int _totalSets = 8;
+    private int _jumpDuration = 30;
+    private int _restDuration = 15;
+    private bool _isWorkingOut = false;
+    private bool _isResting = false;
 
     public MainPage()
     {
         InitializeComponent();
-        TimerGraphicsView.Drawable = _ringDrawable;
     }
 
     protected override void OnAppearing()
     {
         base.OnAppearing();
         UpdateTimerDisplay();
+        _motionDetector.OnJumpDetected += HandleJumpDetected;
+
+        // 1. Load current daily and accumulative step counts
+        int dailySteps = Preferences.Default.Get("SavedDailySteps", 0);
+        UpdateStepDisplay(dailySteps);
+
+        // 2. Subscribe to live step updates from background service
+        App.OnDailyStepsUpdated += OnStepsUpdatedFromService;
     }
 
-    // ==========================================
-    // 1. PRESET SELECTION HANDLERS
-    // ==========================================
-
-    public void OnPresetBeginnerClicked(object? sender, EventArgs e) => ApplyPreset(20, 10, 6, 100);
-    public void OnPresetHiitClicked(object? sender, EventArgs e) => ApplyPreset(45, 15, 10, 130);
-    public void OnPresetEnduranceClicked(object? sender, EventArgs e) => ApplyPreset(60, 15, 5, 110);
-
-    private void ApplyPreset(int jump, int rest, int sets, int rpm)
+    protected override void OnDisappearing()
     {
-        if (_isRunning) return;
-
-        JumpSecsEntry.Text = jump.ToString();
-        RestSecsEntry.Text = rest.ToString();
-        TotalSetsEntry.Text = sets.ToString();
-        RpmEntry.Text = rpm.ToString();
-
-        OnResetClicked(null, EventArgs.Empty);
+        base.OnDisappearing();
+        _motionDetector.OnJumpDetected -= HandleJumpDetected;
+        _motionDetector.StopTracking();
+        App.OnDailyStepsUpdated -= OnStepsUpdatedFromService;
     }
 
-    // ==========================================
-    // 2. TIMER LOOP & STATE MANAGEMENT
-    // ==========================================
-
-    public void OnStartStopClicked(object? sender, EventArgs e)
+    private void OnStepsUpdatedFromService(int newSteps)
     {
-        if (_isRunning)
+        MainThread.BeginInvokeOnMainThread(() =>
         {
-            StopTimer();
+            UpdateStepDisplay(newSteps);
+        });
+    }
+
+    private void UpdateStepDisplay(int dailySteps)
+    {
+        DailyStepsTextLabel.Text = dailySteps.ToString("N0");
+
+        // Load accumulative steps saved by background service
+        int accumulativeSteps = Preferences.Default.Get("SavedAccumulativeSteps", dailySteps);
+        AccumulativeStepsLabel.Text = $"{accumulativeSteps:N0} total";
+
+        // Progress toward 10,000 daily step goal
+        double progress = Math.Min(1.0, (double)dailySteps / 10000.0);
+        StepProgressBar.Progress = progress;
+        DailyGoalProgressLabel.Text = $"{Math.Round(progress * 100)}%";
+    }
+
+    private void HandleJumpDetected()
+    {
+        if (_isWorkingOut && !_isResting)
+        {
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                _totalJumpsInWorkout++;
+                LiveJumpsLabel.Text = _totalJumpsInWorkout.ToString("N0");
+
+                // Rough calorie estimate (~0.1 kcal per jump)
+                _totalCaloriesBurned = Math.Round(_totalJumpsInWorkout * 0.1, 1);
+                LiveCaloriesLabel.Text = $"{_totalCaloriesBurned} kcal";
+            });
+        }
+    }
+
+    private void OnStartStopClicked(object sender, EventArgs e)
+    {
+        if (!_isWorkingOut)
+        {
+            // Start Workout
+            if (int.TryParse(JumpSecsEntry.Text, out int j) && j > 0) _jumpDuration = j;
+            if (int.TryParse(RestSecsEntry.Text, out int r)) _restDuration = r;
+            if (int.TryParse(TotalSetsEntry.Text, out int s) && s > 0) _totalSets = s;
+
+            _remainingSeconds = _jumpDuration;
+            _currentSet = 1;
+            _totalJumpsInWorkout = 0;
+            _totalDurationSeconds = 0;
+            _totalCaloriesBurned = 0;
+
+            _isWorkingOut = true;
+            _isResting = false;
+
+            StatusBadge.BackgroundColor = Color.FromArgb("#10B981");
+            StatusTextLabel.Text = "JUMPING";
+            StartStopButton.Text = "Pause Workout";
+
+            _motionDetector.StartTracking();
+            StartTimer();
         }
         else
         {
-            ParseInputs();
-            StartTimer();
+            // Pause / Stop Workout
+            StopWorkout();
         }
-    }
-
-    private void ParseInputs()
-    {
-        _jumpSecs = int.TryParse(JumpSecsEntry.Text, out var j) && j > 0 ? j : 30;
-        _restSecs = int.TryParse(RestSecsEntry.Text, out var r) && r >= 0 ? r : 15;
-        _totalSets = int.TryParse(TotalSetsEntry.Text, out var s) && s > 0 ? s : 8;
-        _rpm = int.TryParse(RpmEntry.Text, out var rpm) && rpm > 0 ? rpm : 120;
     }
 
     private void StartTimer()
     {
-        _isRunning = true;
-        StartStopButton.Text = "Pause";
-        StartStopButton.BackgroundColor = Color.FromArgb("#EF4444");
-
-        if (_timer == null)
-        {
-            _timer = Dispatcher.CreateTimer();
-            _timer.Interval = TimeSpan.FromSeconds(1);
-            _timer.Tick += Timer_Tick;
-        }
-
-        _timer.Start();
-        SpeakText("Workout Started! Jump!");
+        _workoutTimer?.Stop();
+        _workoutTimer = new System.Timers.Timer(1000);
+        _workoutTimer.Elapsed += OnTimerElapsed;
+        _workoutTimer.Start();
     }
 
-    private void StopTimer()
+    private void OnTimerElapsed(object? sender, ElapsedEventArgs e)
     {
-        _isRunning = false;
-        _timer?.Stop();
-        StartStopButton.Text = "Resume";
-        StartStopButton.BackgroundColor = Color.FromArgb("#6366F1");
-    }
-
-    public void OnResetClicked(object? sender, EventArgs e)
-    {
-        StopTimer();
-        ParseInputs();
-
-        _isRunning = false;
-        _isResting = false;
-        _currentSet = 1;
-        _secondsRemaining = _jumpSecs;
-        _totalWorkoutSeconds = 0;
-        _totalJumpsAccumulated = 0;
-
-        StartStopButton.Text = "Start Workout";
-        StartStopButton.BackgroundColor = Color.FromArgb("#6366F1");
-
-        UpdateTimerDisplay();
-    }
-
-    private void Timer_Tick(object? sender, EventArgs e)
-    {
-        _secondsRemaining--;
-        _totalWorkoutSeconds++;
-
-        if (!_isResting)
+        MainThread.BeginInvokeOnMainThread(() =>
         {
-            _totalJumpsAccumulated += (int)Math.Round(_rpm / 60.0);
-        }
-
-        // Voice Cues for last 3 seconds of set/rest
-        if (_secondsRemaining is > 0 and <= 3)
-        {
-            SpeakText(_secondsRemaining.ToString());
-            TriggerHaptic();
-        }
-
-        if (_secondsRemaining <= 0)
-        {
-            if (!_isResting)
+            if (_remainingSeconds > 0)
             {
-                // Transition to Rest Mode or Complete
-                if (_currentSet >= _totalSets)
-                {
-                    FinishWorkout();
-                    return;
-                }
-
-                _isResting = true;
-                _secondsRemaining = _restSecs;
-                SpeakText("Rest!");
-                TriggerHaptic();
+                _remainingSeconds--;
+                if (_isWorkingOut && !_isResting) _totalDurationSeconds++;
+                UpdateTimerDisplay();
             }
             else
             {
-                // Transition to Next Jump Set
-                _isResting = false;
-                _currentSet++;
-                _secondsRemaining = _jumpSecs;
-                SpeakText($"Set {_currentSet}! Jump!");
-                TriggerHaptic();
+                // Phase finished
+                if (!_isResting && _restDuration > 0)
+                {
+                    // Switch to Rest phase
+                    _isResting = true;
+                    _remainingSeconds = _restDuration;
+                    StatusBadge.BackgroundColor = Color.FromArgb("#F59E0B");
+                    StatusTextLabel.Text = "RESTING";
+                }
+                else
+                {
+                    // Next Set or Complete Workout
+                    if (_currentSet < _totalSets)
+                    {
+                        _currentSet++;
+                        _isResting = false;
+                        _remainingSeconds = _jumpDuration;
+                        StatusBadge.BackgroundColor = Color.FromArgb("#10B981");
+                        StatusTextLabel.Text = "JUMPING";
+                    }
+                    else
+                    {
+                        // Workout Finished!
+                        CompleteWorkout();
+                    }
+                }
             }
-        }
-
-        UpdateTimerDisplay();
+        });
     }
 
     private void UpdateTimerDisplay()
     {
-        int totalMaxSeconds = _isResting ? _restSecs : _jumpSecs;
-        double progress = totalMaxSeconds > 0 ? (double)_secondsRemaining / totalMaxSeconds : 0;
-
-        _ringDrawable.Progress = progress;
-        _ringDrawable.IsRestMode = _isResting;
-        TimerGraphicsView.Invalidate();
-
-        int mins = _secondsRemaining / 60;
-        int secs = _secondsRemaining % 60;
+        int mins = _remainingSeconds / 60;
+        int secs = _remainingSeconds % 60;
         TimerTextLabel.Text = $"{mins:D2}:{secs:D2}";
         CurrentSetTextLabel.Text = $"Set {_currentSet} of {_totalSets}";
-
-        if (_isResting)
-        {
-            StatusBadge.BackgroundColor = Color.FromArgb("#F59E0B");
-            StatusTextLabel.Text = "REST";
-        }
-        else
-        {
-            StatusBadge.BackgroundColor = Color.FromArgb("#6366F1");
-            StatusTextLabel.Text = _isRunning ? "JUMP!" : "READY";
-        }
-
-        // Live HUD Calculations
-        LiveJumpsLabel.Text = _totalJumpsAccumulated.ToString("N0");
-
-        double estCalories = Math.Round((10.0 * 70.0 * (_totalWorkoutSeconds / 3600.0)), 1);
-        LiveCaloriesLabel.Text = $"{estCalories:N0} kcal";
     }
 
-    // ==========================================
-    // 3. AUDIO, HAPTICS & SUMMARY MODAL
-    // ==========================================
-
-    private async void SpeakText(string text)
+    private void StopWorkout()
     {
-        try
-        {
-            await TextToSpeech.Default.SpeakAsync(text);
-        }
-        catch { }
+        _workoutTimer?.Stop();
+        _isWorkingOut = false;
+        _motionDetector.StopTracking();
+
+        StatusBadge.BackgroundColor = Color.FromArgb("#6366F1");
+        StatusTextLabel.Text = "READY";
+        StartStopButton.Text = "Start Workout";
     }
 
-    private void TriggerHaptic()
+    private async void CompleteWorkout()
     {
-        try
-        {
-            HapticFeedback.Default.Perform(HapticFeedbackType.Click);
-        }
-        catch { }
-    }
+        StopWorkout();
 
-    private async void FinishWorkout()
-    {
-        StopTimer();
-        SpeakText("Workout Complete! Great job!");
-
-        int mins = _totalWorkoutSeconds / 60;
-        int secs = _totalWorkoutSeconds % 60;
-
-        SummaryJumpsLabel.Text = _totalJumpsAccumulated.ToString("N0");
-        SummarySetsLabel.Text = _totalSets.ToString();
-        SummaryDurationLabel.Text = $"{mins}m {secs}s";
-
-        double estCalories = Math.Round((10.0 * 70.0 * (_totalWorkoutSeconds / 3600.0)), 1);
-        SummaryCaloriesLabel.Text = $"{estCalories:N0} kcal";
-
-        // Save Record to Database
+        // Save workout record to database including current daily steps
         var record = new WorkoutRecord
         {
             Date = DateTime.Now,
-            WorkoutType = "Interval Jump Rope",
-            SetsCompleted = _totalSets,
-            TotalJumps = _totalJumpsAccumulated,
-            DurationSeconds = _totalWorkoutSeconds,
-            JumpSecs = _jumpSecs,
-            RestSecs = _restSecs,
-            CaloriesBurned = estCalories
+            TotalJumps = _totalJumpsInWorkout,
+            DurationSeconds = _totalDurationSeconds,
+            CaloriesBurned = _totalCaloriesBurned,
+            DailySteps = Preferences.Default.Get("SavedDailySteps", 0)
         };
 
         await _dbService.SaveWorkoutAsync(record);
+
+        // Show summary modal
+        SummaryJumpsLabel.Text = _totalJumpsInWorkout.ToString("N0");
+        SummarySetsLabel.Text = _totalSets.ToString();
+        SummaryDurationLabel.Text = $"{_totalDurationSeconds / 60}m {_totalDurationSeconds % 60}s";
+        SummaryCaloriesLabel.Text = $"{_totalCaloriesBurned} kcal";
         SummaryModalOverlay.IsVisible = true;
     }
 
-    public void OnCloseSummaryClicked(object? sender, EventArgs e)
+    private void OnCloseSummaryClicked(object sender, EventArgs e)
     {
         SummaryModalOverlay.IsVisible = false;
-        OnResetClicked(null, EventArgs.Empty);
+    }
+
+    private void OnResetClicked(object sender, EventArgs e)
+    {
+        StopWorkout();
+        _remainingSeconds = 30;
+        _currentSet = 1;
+        _totalJumpsInWorkout = 0;
+        LiveJumpsLabel.Text = "0";
+        LiveCaloriesLabel.Text = "0 kcal";
+        UpdateTimerDisplay();
+    }
+
+    // Quick Presets
+    private void OnPresetBeginnerClicked(object sender, EventArgs e)
+    {
+        JumpSecsEntry.Text = "30"; RestSecsEntry.Text = "15"; TotalSetsEntry.Text = "6"; RpmEntry.Text = "100";
+    }
+
+    private void OnPresetHiitClicked(object sender, EventArgs e)
+    {
+        JumpSecsEntry.Text = "45"; RestSecsEntry.Text = "15"; TotalSetsEntry.Text = "8"; RpmEntry.Text = "130";
+    }
+
+    private void OnPresetEnduranceClicked(object sender, EventArgs e)
+    {
+        JumpSecsEntry.Text = "60"; RestSecsEntry.Text = "30"; TotalSetsEntry.Text = "10"; RpmEntry.Text = "110";
     }
 }

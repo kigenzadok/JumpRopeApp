@@ -9,6 +9,40 @@
         <ScrollView Padding="20">
             <VerticalStackLayout Spacing="20" MaximumWidthRequest="480">
 
+                <!-- 0. DAILY STEPS & DISTANCE CARD -->
+                <Border BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1E293B}"
+        Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}"
+        StrokeShape="RoundRectangle 16" Padding="16">
+                    <VerticalStackLayout Spacing="12">
+
+                        <!-- Header row -->
+                        <Grid ColumnDefinitions="*,Auto">
+                            <VerticalStackLayout Spacing="2">
+                                <Label Text="DAILY MOVEMENT" FontSize="10" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#64748B, Dark=#94A3B8}" />
+                                <HorizontalStackLayout Spacing="6">
+                                    <Label x:Name="DailyStepsTextLabel" Text="0" FontSize="24" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
+                                    <Label Text="steps today" FontSize="12" VerticalTextAlignment="End" TextColor="{AppThemeBinding Light=#64748B, Dark=#94A3B8}" />
+                                </HorizontalStackLayout>
+                            </VerticalStackLayout>
+
+                            <VerticalStackLayout Grid.Column="1" HorizontalOptions="End" Spacing="2">
+                                <Label Text="ACCUMULATIVE" FontSize="10" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#64748B, Dark=#94A3B8}" HorizontalOptions="End" />
+                                <Label x:Name="AccumulativeStepsLabel" Text="0" FontSize="16" FontAttributes="Bold" TextColor="#6366F1" HorizontalOptions="End" />
+                            </VerticalStackLayout>
+                        </Grid>
+
+                        <!-- Progress Bar & Goal -->
+                        <VerticalStackLayout Spacing="4">
+                            <ProgressBar x:Name="StepProgressBar" Progress="0" ProgressColor="#6366F1" HeightRequest="6" />
+                            <Grid ColumnDefinitions="*,*">
+                                <Label Text="Goal: 10,000 steps" FontSize="10" TextColor="{AppThemeBinding Light=#64748B, Dark=#94A3B8}" />
+                                <Label x:Name="DailyGoalProgressLabel" Grid.Column="1" Text="0%" FontSize="10" FontAttributes="Bold" HorizontalOptions="End" TextColor="{AppThemeBinding Light=#64748B, Dark=#94A3B8}" />
+                            </Grid>
+                        </VerticalStackLayout>
+
+                    </VerticalStackLayout>
+                </Border>
+
                 <!-- 1. PRESET WORKOUT CHIPS -->
                 <Border BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1E293B}"
                         Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}"

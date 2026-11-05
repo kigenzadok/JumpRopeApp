@@ -27,14 +27,19 @@ public partial class CalendarPage : ContentPage
     private async Task RefreshDataAsync()
     {
         _allWorkouts = await _dbService.GetWorkoutsAsync();
-        UpdateMonthlySummary(WorkoutDatePicker.Date);
-        FilterDayWorkouts(WorkoutDatePicker.Date);
+
+        // Use ?? DateTime.Today to safely handle nullable DateTime? values
+        DateTime selectedDate = WorkoutDatePicker.Date ?? DateTime.Today;
+
+        UpdateMonthlySummary(selectedDate);
+        FilterDayWorkouts(selectedDate);
     }
 
     private void OnDateSelected(object sender, DateChangedEventArgs e)
     {
-        UpdateMonthlySummary(e.NewDate);
-        FilterDayWorkouts(e.NewDate);
+        DateTime selectedDate = e.NewDate ?? DateTime.Today;
+        UpdateMonthlySummary(selectedDate);
+        FilterDayWorkouts(selectedDate);
     }
 
     private void FilterDayWorkouts(DateTime targetDate)
@@ -58,11 +63,12 @@ public partial class CalendarPage : ContentPage
             .ToList();
 
         int totalJumps = monthRecords.Sum(w => w.TotalJumps);
+        int totalSteps = monthRecords.Sum(w => w.DailySteps);
         int totalSecs = monthRecords.Sum(w => w.DurationSeconds);
         double totalCalories = monthRecords.Sum(w => w.CaloriesBurned);
 
         MonthlyJumpsLabel.Text = totalJumps.ToString("N0");
-        MonthlyTimeLabel.Text = $"{totalSecs / 60}m {totalSecs % 60}s";
+        MonthlyStepsLabel.Text = totalSteps.ToString("N0");
         MonthlyCaloriesLabel.Text = $"{totalCalories:N0} kcal";
     }
 
@@ -70,7 +76,7 @@ public partial class CalendarPage : ContentPage
     {
         if (sender is SwipeItem swipeItem && swipeItem.CommandParameter is WorkoutRecord record)
         {
-            bool confirm = await DisplayAlert("Confirm Delete", "Are you sure you want to delete this workout log?", "Delete", "Cancel");
+            bool confirm = await DisplayAlertAsync("Confirm Delete", "...", "Delete", "Cancel");
             if (confirm)
             {
                 await _dbService.DeleteWorkoutAsync(record);
@@ -78,4 +84,5 @@ public partial class CalendarPage : ContentPage
             }
         }
     }
+   
 }

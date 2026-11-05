@@ -2,6 +2,8 @@ using JumpRopeApp.Models;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
 using System;
+using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace JumpRopeApp;
@@ -141,6 +143,18 @@ public partial class StatsPage : ContentPage
         GoalProgressBar.Progress = progress;
         GoalPercentLabel.Text = $"{Math.Round(progress * 100)}%";
         GoalProgressTextLabel.Text = $"{todayJumps:N0} / {targetGoal:N0} Jumps Completed";
+
+        // Load workouts to compute max steps and records
+        var workoutsList = await _dbService.GetWorkoutsAsync();
+        if (workoutsList != null && workoutsList.Any())
+        {
+            int mostSteps = workoutsList.Max(w => w.DailySteps);
+            MostStepsLabel.Text = mostSteps.ToString("N0");
+        }
+        else
+        {
+            MostStepsLabel.Text = "0";
+        }
     }
 
     private async Task LoadPersonalRecordsAsync()
@@ -184,7 +198,6 @@ public partial class StatsPage : ContentPage
         bool confirm = await DisplayAlert("Reset Stats", "Are you sure you want to reset all lifetime stats?", "Yes", "No");
         if (confirm)
         {
-            // ? Correct: reload the individual async tasks directly
             await LoadProfileAsync();
             await LoadStatsAsync();
             await LoadPersonalRecordsAsync();

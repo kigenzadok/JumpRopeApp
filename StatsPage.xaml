@@ -32,25 +32,32 @@
                 <VerticalStackLayout Spacing="14">
                     <Label Text="Personal Bests 🏆" FontSize="18" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
 
-                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="10">
-                        <Border Grid.Column="0" BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}" StrokeShape="RoundRectangle 12" Padding="10">
+                    <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="8">
+                        <Border Grid.Column="0" BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}" StrokeShape="RoundRectangle 12" Padding="8">
                             <VerticalStackLayout Spacing="4">
-                                <Label Text="MOST JUMPS" FontSize="9" FontAttributes="Bold" TextColor="#F59E0B" />
-                                <Label x:Name="PrMostJumpsLabel" Text="0" FontSize="18" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
+                                <Label Text="JUMPS" FontSize="8" FontAttributes="Bold" TextColor="#F59E0B" />
+                                <Label x:Name="PrMostJumpsLabel" Text="0" FontSize="15" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
                             </VerticalStackLayout>
                         </Border>
 
-                        <Border Grid.Column="1" BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}" StrokeShape="RoundRectangle 12" Padding="10">
+                        <Border Grid.Column="1" BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}" StrokeShape="RoundRectangle 12" Padding="8">
                             <VerticalStackLayout Spacing="4">
-                                <Label Text="MOST SETS" FontSize="9" FontAttributes="Bold" TextColor="#10B981" />
-                                <Label x:Name="PrMostSetsLabel" Text="0" FontSize="18" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
+                                <Label Text="STEPS" FontSize="8" FontAttributes="Bold" TextColor="#10B981" />
+                                <Label x:Name="MostStepsLabel" Text="0" FontSize="15" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
                             </VerticalStackLayout>
                         </Border>
 
-                        <Border Grid.Column="2" BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}" StrokeShape="RoundRectangle 12" Padding="10">
+                        <Border Grid.Column="2" BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}" StrokeShape="RoundRectangle 12" Padding="8">
                             <VerticalStackLayout Spacing="4">
-                                <Label Text="BEST STREAK" FontSize="9" FontAttributes="Bold" TextColor="#6366F1" />
-                                <Label x:Name="PrStreakLabel" Text="0 Days" FontSize="18" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
+                                <Label Text="SETS" FontSize="8" FontAttributes="Bold" TextColor="#3B82F6" />
+                                <Label x:Name="PrMostSetsLabel" Text="0" FontSize="15" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
+                            </VerticalStackLayout>
+                        </Border>
+
+                        <Border Grid.Column="3" BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}" StrokeShape="RoundRectangle 12" Padding="8">
+                            <VerticalStackLayout Spacing="4">
+                                <Label Text="STREAK" FontSize="8" FontAttributes="Bold" TextColor="#6366F1" />
+                                <Label x:Name="PrStreakLabel" Text="0 d" FontSize="15" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
                             </VerticalStackLayout>
                         </Border>
                     </Grid>

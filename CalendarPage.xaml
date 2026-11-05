@@ -30,27 +30,41 @@
                 <VerticalStackLayout Spacing="12">
                     <Label x:Name="MonthSummaryTitleLabel" Text="📊 Monthly Summary" FontSize="14" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
 
-                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="10">
-                        <Border Grid.Column="0" BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" StrokeShape="RoundRectangle 12" Padding="10">
+                    <!-- Unified 4-Metric Monthly Summary Grid -->
+                    <Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="8">
+
+                        <!-- Jumps -->
+                        <Border Grid.Row="0" Grid.Column="0" BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" StrokeShape="RoundRectangle 12" Padding="8">
                             <VerticalStackLayout Spacing="2">
-                                <Label Text="TOTAL JUMPS" FontSize="9" FontAttributes="Bold" TextColor="#6366F1" HorizontalOptions="Center" />
-                                <Label x:Name="MonthlyJumpsLabel" Text="0" FontSize="15" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" HorizontalOptions="Center" />
+                                <Label Text="JUMPS" FontSize="8" FontAttributes="Bold" TextColor="#6366F1" HorizontalOptions="Center" />
+                                <Label x:Name="MonthlyJumpsLabel" Text="0" FontSize="14" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" HorizontalOptions="Center" />
                             </VerticalStackLayout>
                         </Border>
 
-                        <Border Grid.Column="1" BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" StrokeShape="RoundRectangle 12" Padding="10">
+                        <!-- Steps -->
+                        <Border Grid.Row="0" Grid.Column="1" BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" StrokeShape="RoundRectangle 12" Padding="8">
                             <VerticalStackLayout Spacing="2">
-                                <Label Text="ACTIVE TIME" FontSize="9" FontAttributes="Bold" TextColor="#F59E0B" HorizontalOptions="Center" />
-                                <Label x:Name="MonthlyTimeLabel" Text="0m" FontSize="15" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" HorizontalOptions="Center" />
+                                <Label Text="STEPS" FontSize="8" FontAttributes="Bold" TextColor="#10B981" HorizontalOptions="Center" />
+                                <Label x:Name="MonthlyStepsLabel" Text="0" FontSize="14" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" HorizontalOptions="Center" />
                             </VerticalStackLayout>
                         </Border>
 
-                        <Border Grid.Column="2" BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" StrokeShape="RoundRectangle 12" Padding="10">
+                        <!-- Active Time -->
+                        <Border Grid.Row="0" Grid.Column="2" BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" StrokeShape="RoundRectangle 12" Padding="8">
                             <VerticalStackLayout Spacing="2">
-                                <Label Text="CALORIES" FontSize="9" FontAttributes="Bold" TextColor="#EF4444" HorizontalOptions="Center" />
-                                <Label x:Name="MonthlyCaloriesLabel" Text="0 kcal" FontSize="15" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" HorizontalOptions="Center" />
+                                <Label Text="ACTIVE TIME" FontSize="8" FontAttributes="Bold" TextColor="#F59E0B" HorizontalOptions="Center" />
+                                <Label x:Name="MonthlyTimeLabel" Text="0m" FontSize="14" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" HorizontalOptions="Center" />
                             </VerticalStackLayout>
                         </Border>
+
+                        <!-- Calories (Span across or place neatly in row 1) -->
+                        <Border Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3" BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" StrokeShape="RoundRectangle 12" Padding="8">
+                            <HorizontalStackLayout HorizontalOptions="Center" Spacing="6">
+                                <Label Text="CALORIES:" FontSize="9" FontAttributes="Bold" TextColor="#EF4444" VerticalTextAlignment="Center" />
+                                <Label x:Name="MonthlyCaloriesLabel" Text="0 kcal" FontSize="14" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" VerticalTextAlignment="Center" />
+                            </HorizontalStackLayout>
+                        </Border>
+
                     </Grid>
                 </VerticalStackLayout>
             </Border>
@@ -89,6 +103,7 @@
                                             <HorizontalStackLayout Grid.Row="1" Grid.ColumnSpan="2" Spacing="16" Margin="0,8,0,0">
                                                 <Label Text="{Binding SetsCompleted, StringFormat='Sets: {0}'}" FontSize="11" TextColor="{AppThemeBinding Light=#64748B, Dark=#94A3B8}" />
                                                 <Label Text="{Binding DurationSeconds, StringFormat='Duration: {0}s'}" FontSize="11" TextColor="{AppThemeBinding Light=#64748B, Dark=#94A3B8}" />
+                                                <Label Text="{Binding DailySteps, StringFormat='Steps: {0:N0}'}" FontSize="11" TextColor="#10B981" />
                                             </HorizontalStackLayout>
                                         </Grid>
                                     </Border>

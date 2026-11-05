@@ -16,13 +16,20 @@ public class DatabaseService
     private async Task InitAsync()
     {
         if (_db != null) return;
+
         var dbPath = Path.Combine(FileSystem.AppDataDirectory, "jumprope.db3");
         _db = new SQLiteAsyncConnection(dbPath);
+
         await _db.CreateTableAsync<WorkoutRecord>();
         await _db.CreateTableAsync<UserProfile>();
         await _db.CreateTableAsync<Routine>();
         await _db.CreateTableAsync<RoutineStep>();
+        await _db.CreateTableAsync<RoutineRecord>(); // Ensures custom routines table exists
     }
+
+    // ==========================================
+    // 1. WORKOUT RECORDS
+    // ==========================================
 
     public async Task<WorkoutRecord> SaveWorkoutAsync(WorkoutRecord record)
     {
@@ -43,7 +50,10 @@ public class DatabaseService
         return await _db!.Table<WorkoutRecord>().OrderByDescending(w => w.Date).ToListAsync();
     }
 
-    // Profile Methods
+    // ==========================================
+    // 2. USER PROFILE & SETTINGS
+    // ==========================================
+
     public async Task<UserProfile> GetProfileAsync()
     {
         await InitAsync();
@@ -67,7 +77,10 @@ public class DatabaseService
         await SaveProfileAsync(profile);
     }
 
-    // Lifetime Aggregation Helper
+    // ==========================================
+    // 3. STATS & ANALYTICS HELPERS
+    // ==========================================
+
     public async Task<(int totalJumps, int totalSets, int totalWorkouts, double totalCalories)> GetLifetimeStatsAsync()
     {
         var workouts = await GetWorkoutsAsync();
@@ -81,7 +94,6 @@ public class DatabaseService
         return (jumps, sets, count, calories);
     }
 
-    // Daily Stats Helper
     public async Task<(int todaySets, int todayJumps)> GetDayStatsAsync(DateTime date)
     {
         var workouts = await GetWorkoutsAsync();
@@ -93,7 +105,6 @@ public class DatabaseService
         return (sets, jumps);
     }
 
-    // Personal Records Helper
     public async Task<(int maxJumps, int maxSets, int streak)> GetPersonalRecordsAsync()
     {
         var workouts = await GetWorkoutsAsync();
@@ -102,7 +113,7 @@ public class DatabaseService
         int maxJumps = workouts.Max(w => w.TotalJumps);
         int maxSets = workouts.Max(w => w.SetsCompleted);
 
-        // Calculate current consecutive day streak
+        // Calculate consecutive day streak
         int streak = 0;
         var uniqueDates = workouts.Select(w => w.Date.Date).Distinct().OrderByDescending(d => d).ToList();
 
@@ -121,8 +132,6 @@ public class DatabaseService
         return (maxJumps, maxSets, streak);
     }
 
-    // Weekly Totals Helper
-    // Weekly Jump Totals Helper returning Day Name + Jumps tuple
     public async Task<List<(string DayName, int Jumps)>> GetWeeklyJumpTotalsAsync()
     {
         var workouts = await GetWorkoutsAsync();
@@ -132,7 +141,7 @@ public class DatabaseService
         {
             var targetDate = DateTime.Today.AddDays(-i);
             int jumps = workouts.Where(w => w.Date.Date == targetDate.Date).Sum(w => w.TotalJumps);
-            string dayName = targetDate.ToString("ddd"); // "Mon", "Tue", etc.
+            string dayName = targetDate.ToString("ddd");
 
             weeklyTotals.Add((dayName, jumps));
         }
@@ -140,17 +149,16 @@ public class DatabaseService
         return weeklyTotals;
     }
 
-    // CSV Export Helper
     public async Task<string> ExportWorkoutsToCsvAsync()
     {
         var workouts = await GetWorkoutsAsync();
         var sb = new StringBuilder();
 
-        sb.AppendLine("Id,Date,WorkoutType,SetsCompleted,TotalJumps,DurationSeconds,CaloriesBurned");
+        sb.AppendLine("Id,Date,WorkoutType,SetsCompleted,TotalJumps,DurationSeconds,CaloriesBurned,DailySteps");
 
         foreach (var w in workouts)
         {
-            sb.AppendLine($"{w.Id},{w.Date:yyyy-MM-dd HH:mm:ss},\"{w.WorkoutType}\",{w.SetsCompleted},{w.TotalJumps},{w.DurationSeconds},{w.CaloriesBurned}");
+            sb.AppendLine($"{w.Id},{w.Date:yyyy-MM-dd HH:mm:ss},\"{w.WorkoutType}\",{w.SetsCompleted},{w.TotalJumps},{w.DurationSeconds},{w.CaloriesBurned},{w.DailySteps}");
         }
 
         string filePath = Path.Combine(FileSystem.CacheDirectory, "workout_history_export.csv");
@@ -158,6 +166,10 @@ public class DatabaseService
 
         return filePath;
     }
+
+    // ==========================================
+    // 4. GAMIFICATION & ACHIEVEMENTS
+    // ==========================================
 
     public async Task<(int Level, int CurrentXp, int NextLevelXp, double Progress)> GetUserLevelAsync()
     {
@@ -190,7 +202,7 @@ public class DatabaseService
         int totalJumps = workouts.Sum(w => w.TotalJumps);
         int totalWorkouts = workouts.Count;
 
-        var badges = new List<Achievement>
+        return new List<Achievement>
         {
             new Achievement
             {
@@ -243,9 +255,12 @@ public class DatabaseService
                 IsUnlocked = maxJumps >= 1000
             }
         };
-
-        return badges;
     }
+
+    // ==========================================
+    // 5. CUSTOM ROUTINES (PERSISTENCE)
+    // ==========================================
+
     public async Task SaveRoutineAsync(Routine routine, List<RoutineStep> steps)
     {
         await InitAsync();
@@ -273,4 +288,21 @@ public class DatabaseService
                          .ToListAsync();
     }
 
+    public async Task<List<RoutineRecord>> GetCustomRoutineRecordsAsync()
+    {
+        await InitAsync();
+        return await _db!.Table<RoutineRecord>().ToListAsync();
+    }
+
+    public async Task<int> SaveRoutineRecordAsync(RoutineRecord routine)
+    {
+        await InitAsync();
+        return await _db!.InsertAsync(routine);
+    }
+
+    public async Task<int> DeleteRoutineRecordAsync(RoutineRecord routine)
+    {
+        await InitAsync();
+        return await _db!.DeleteAsync(routine);
+    }
 }
