@@ -1,6 +1,7 @@
 using JumpRopeApp.Models;
 using Microsoft.Maui.Controls;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace JumpRopeApp;
@@ -22,46 +23,34 @@ public partial class RoutinesPage : ContentPage
 
     private async Task LoadRoutinesAsync()
     {
-        var routines = await _dbService.GetCustomRoutineRecordsAsync();
+        var routines = await _dbService.GetRoutinesAsync();
         RoutinesCollectionView.ItemsSource = routines;
     }
 
-    private async void OnSaveRoutineClicked(object sender, EventArgs e)
+    public async void OnSaveRoutineClicked(object? sender, EventArgs e)
     {
-        string name = RoutineNameEntry.Text?.Trim() ?? string.Empty;
-        int.TryParse(TargetStepsEntry.Text, out int steps);
-        int.TryParse(TargetJumpsEntry.Text, out int jumps);
-
-        if (string.IsNullOrEmpty(name))
+        if (string.IsNullOrWhiteSpace(RoutineNameEntry.Text))
         {
-            await DisplayAlert("Error", "Please enter a routine name.", "OK");
+            await DisplayAlertAsync("Error", "Please enter a routine name.", "OK");
             return;
         }
 
-        var newRoutine = new RoutineRecord
+        var routine = new Routine
         {
-            Name = name,
-            TargetSteps = steps,
-            TargetJumps = jumps
+            Name = RoutineNameEntry.Text,
+            Description = "Custom multi-stage interval routine"
         };
 
-        await _dbService.SaveRoutineRecordAsync(newRoutine);
-
-        // Clear entries
-        RoutineNameEntry.Text = string.Empty;
-        TargetStepsEntry.Text = string.Empty;
-        TargetJumpsEntry.Text = string.Empty;
-
-        await LoadRoutinesAsync();
-        await DisplayAlert("Success", "Custom routine saved successfully!", "OK");
-    }
-
-    private async void OnDeleteRoutineClicked(object sender, EventArgs e)
-    {
-        if (sender is Button button && button.CommandParameter is RoutineRecord routine)
+        var steps = new List<RoutineStep>
         {
-            await _dbService.DeleteRoutineRecordAsync(routine);
-            await LoadRoutinesAsync();
-        }
+            new RoutineStep { StepOrder = 1, JumpDurationSecs = 30, RestDurationSecs = 15 },
+            new RoutineStep { StepOrder = 2, JumpDurationSecs = 45, RestDurationSecs = 15 },
+            new RoutineStep { StepOrder = 3, JumpDurationSecs = 60, RestDurationSecs = 20 }
+        };
+
+        await _dbService.SaveRoutineAsync(routine, steps);
+        RoutineNameEntry.Text = string.Empty;
+        await LoadRoutinesAsync();
+        await DisplayAlertAsync("Success", "Routine saved successfully!", "OK");
     }
 }

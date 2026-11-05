@@ -14,4 +14,5 @@ public class UserProfile
     public int DailyJumpGoal { get; set; } = 1000;
     public bool EnableHaptics { get; set; } = true;
     public bool EnableAudio { get; set; } = true;
+    public int DailyTargetJumps { get; set; } = 5000;
 }

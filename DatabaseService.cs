@@ -16,20 +16,13 @@ public class DatabaseService
     private async Task InitAsync()
     {
         if (_db != null) return;
-
         var dbPath = Path.Combine(FileSystem.AppDataDirectory, "jumprope.db3");
         _db = new SQLiteAsyncConnection(dbPath);
-
         await _db.CreateTableAsync<WorkoutRecord>();
         await _db.CreateTableAsync<UserProfile>();
         await _db.CreateTableAsync<Routine>();
         await _db.CreateTableAsync<RoutineStep>();
-        await _db.CreateTableAsync<RoutineRecord>(); // Ensures custom routines table exists
     }
-
-    // ==========================================
-    // 1. WORKOUT RECORDS
-    // ==========================================
 
     public async Task<WorkoutRecord> SaveWorkoutAsync(WorkoutRecord record)
     {
@@ -50,10 +43,7 @@ public class DatabaseService
         return await _db!.Table<WorkoutRecord>().OrderByDescending(w => w.Date).ToListAsync();
     }
 
-    // ==========================================
-    // 2. USER PROFILE & SETTINGS
-    // ==========================================
-
+    // Profile Methods
     public async Task<UserProfile> GetProfileAsync()
     {
         await InitAsync();
@@ -77,10 +67,7 @@ public class DatabaseService
         await SaveProfileAsync(profile);
     }
 
-    // ==========================================
-    // 3. STATS & ANALYTICS HELPERS
-    // ==========================================
-
+    // Lifetime Aggregation Helper
     public async Task<(int totalJumps, int totalSets, int totalWorkouts, double totalCalories)> GetLifetimeStatsAsync()
     {
         var workouts = await GetWorkoutsAsync();
@@ -94,6 +81,7 @@ public class DatabaseService
         return (jumps, sets, count, calories);
     }
 
+    // Daily Stats Helper
     public async Task<(int todaySets, int todayJumps)> GetDayStatsAsync(DateTime date)
     {
         var workouts = await GetWorkoutsAsync();
@@ -105,6 +93,7 @@ public class DatabaseService
         return (sets, jumps);
     }
 
+    // Personal Records Helper
     public async Task<(int maxJumps, int maxSets, int streak)> GetPersonalRecordsAsync()
     {
         var workouts = await GetWorkoutsAsync();
@@ -113,7 +102,7 @@ public class DatabaseService
         int maxJumps = workouts.Max(w => w.TotalJumps);
         int maxSets = workouts.Max(w => w.SetsCompleted);
 
-        // Calculate consecutive day streak
+        // Calculate current consecutive day streak
         int streak = 0;
         var uniqueDates = workouts.Select(w => w.Date.Date).Distinct().OrderByDescending(d => d).ToList();
 
@@ -132,6 +121,8 @@ public class DatabaseService
         return (maxJumps, maxSets, streak);
     }
 
+    // Weekly Totals Helper
+    // Weekly Jump Totals Helper returning Day Name + Jumps tuple
     public async Task<List<(string DayName, int Jumps)>> GetWeeklyJumpTotalsAsync()
     {
         var workouts = await GetWorkoutsAsync();
@@ -141,7 +132,7 @@ public class DatabaseService
         {
             var targetDate = DateTime.Today.AddDays(-i);
             int jumps = workouts.Where(w => w.Date.Date == targetDate.Date).Sum(w => w.TotalJumps);
-            string dayName = targetDate.ToString("ddd");
+            string dayName = targetDate.ToString("ddd"); // "Mon", "Tue", etc.
 
             weeklyTotals.Add((dayName, jumps));
         }
@@ -149,16 +140,17 @@ public class DatabaseService
         return weeklyTotals;
     }
 
+    // CSV Export Helper
     public async Task<string> ExportWorkoutsToCsvAsync()
     {
         var workouts = await GetWorkoutsAsync();
         var sb = new StringBuilder();
 
-        sb.AppendLine("Id,Date,WorkoutType,SetsCompleted,TotalJumps,DurationSeconds,CaloriesBurned,DailySteps");
+        sb.AppendLine("Id,Date,WorkoutType,SetsCompleted,TotalJumps,DurationSeconds,CaloriesBurned");
 
         foreach (var w in workouts)
         {
-            sb.AppendLine($"{w.Id},{w.Date:yyyy-MM-dd HH:mm:ss},\"{w.WorkoutType}\",{w.SetsCompleted},{w.TotalJumps},{w.DurationSeconds},{w.CaloriesBurned},{w.DailySteps}");
+            sb.AppendLine($"{w.Id},{w.Date:yyyy-MM-dd HH:mm:ss},\"{w.WorkoutType}\",{w.SetsCompleted},{w.TotalJumps},{w.DurationSeconds},{w.CaloriesBurned}");
         }
 
         string filePath = Path.Combine(FileSystem.CacheDirectory, "workout_history_export.csv");
@@ -166,10 +158,6 @@ public class DatabaseService
 
         return filePath;
     }
-
-    // ==========================================
-    // 4. GAMIFICATION & ACHIEVEMENTS
-    // ==========================================
 
     public async Task<(int Level, int CurrentXp, int NextLevelXp, double Progress)> GetUserLevelAsync()
     {
@@ -199,68 +187,117 @@ public class DatabaseService
     {
         var workouts = await GetWorkoutsAsync();
         var (maxJumps, maxSets, streak) = await GetPersonalRecordsAsync();
-        int totalJumps = workouts.Sum(w => w.TotalJumps);
-        int totalWorkouts = workouts.Count;
 
-        return new List<Achievement>
+        int totalJumps = workouts.Sum(w => w.TotalJumps);
+        int totalSets = workouts.Sum(w => w.SetsCompleted);
+        int totalCalories = (int)workouts.Sum(w => w.CaloriesBurned);
+
+        var badges = new List<Achievement>();
+
+        // -------------------------------------------------------------
+        // PART 1: MULTI-TIERED LIFETIME BADGES (Bronze -> Silver -> Gold -> Platinum)
+        // -------------------------------------------------------------
+        badges.Add(CreateTieredBadge(
+            "century_club", "Century Club", "Complete {0} total sets", "💯",
+            totalSets, new[] { 100, 500, 1000, 5000 }));
+
+        badges.Add(CreateTieredBadge(
+            "jump_master", "Jump Volume", "Accumulate {0:N0} total jumps", "⚡",
+            totalJumps, new[] { 10000, 50000, 100000, 500000 }));
+
+        badges.Add(CreateTieredBadge(
+            "streak_master", "On Fire", "Reach a {0}-day daily streak", "🔥",
+            streak, new[] { 7, 14, 30, 100 }));
+
+        badges.Add(CreateTieredBadge(
+            "calorie_burner", "Calorie Crusher", "Burn {0:N0} total calories", "🔥",
+            totalCalories, new[] { 1000, 5000, 25000, 100000 }));
+
+        // -------------------------------------------------------------
+        // PART 2: DYNAMIC WEEKLY CHALLENGES (Resets every Monday)
+        // -------------------------------------------------------------
+        DateTime startOfWeek = DateTime.Today.AddDays(-(int)DateTime.Today.DayOfWeek + (int)DayOfWeek.Monday);
+        var weeklyWorkouts = workouts.Where(w => w.Date.Date >= startOfWeek).ToList();
+
+        int weeklyJumps = weeklyWorkouts.Sum(w => w.TotalJumps);
+        int weeklySessions = weeklyWorkouts.Count;
+        int weeklyActiveMinutes = weeklyWorkouts.Sum(w => w.DurationSeconds) / 60;
+
+        badges.Add(new Achievement
         {
-            new Achievement
-            {
-                Id = "first_step",
-                Title = "First Jump",
-                Description = "Complete your first workout session.",
-                Icon = "👟",
-                Target = 1,
-                Progress = Math.Min(totalWorkouts, 1),
-                IsUnlocked = totalWorkouts >= 1
-            },
-            new Achievement
-            {
-                Id = "century_club",
-                Title = "Century Club",
-                Description = "Complete 100 total sets across all workouts.",
-                Icon = "💯",
-                Target = 100,
-                Progress = Math.Min(workouts.Sum(w => w.SetsCompleted), 100),
-                IsUnlocked = workouts.Sum(w => w.SetsCompleted) >= 100
-            },
-            new Achievement
-            {
-                Id = "streak_master",
-                Title = "On Fire",
-                Description = "Reach a 7-day daily jump streak.",
-                Icon = "🔥",
-                Target = 7,
-                Progress = Math.Min(streak, 7),
-                IsUnlocked = streak >= 7
-            },
-            new Achievement
-            {
-                Id = "jump_master",
-                Title = "10k Jumper",
-                Description = "Accumulate 10,000 lifetime jumps.",
-                Icon = "⚡",
-                Target = 10000,
-                Progress = Math.Min(totalJumps, 10000),
-                IsUnlocked = totalJumps >= 10000
-            },
-            new Achievement
-            {
-                Id = "iron_legs",
-                Title = "Iron Legs",
-                Description = "Complete a single session with over 1,000 jumps.",
-                Icon = "🏋️",
-                Target = 1000,
-                Progress = Math.Min(maxJumps, 1000),
-                IsUnlocked = maxJumps >= 1000
-            }
-        };
+            Id = $"weekly_jumps_{startOfWeek:yyyyMMdd}",
+            Title = "🎯 Weekly Target: 5,000 Jumps",
+            Description = "Log 5,000 jumps during the current week.",
+            Icon = "📅",
+            Category = "Weekly Challenge",
+            Target = 5000,
+            Progress = Math.Min(weeklyJumps, 5000),
+            IsUnlocked = weeklyJumps >= 5000
+        });
+
+        badges.Add(new Achievement
+        {
+            Id = $"weekly_consistency_{startOfWeek:yyyyMMdd}",
+            Title = "⏱️ Weekly Consistency",
+            Description = "Complete 3 workout sessions this week.",
+            Icon = "🏋️",
+            Category = "Weekly Challenge",
+            Target = 3,
+            Progress = Math.Min(weeklySessions, 3),
+            IsUnlocked = weeklySessions >= 3
+        });
+
+        badges.Add(new Achievement
+        {
+            Id = $"weekly_endurance_{startOfWeek:yyyyMMdd}",
+            Title = "⏳ Endurance Push",
+            Description = "Log 30 minutes of active jumping time this week.",
+            Icon = "⚡",
+            Category = "Weekly Challenge",
+            Target = 30,
+            Progress = Math.Min(weeklyActiveMinutes, 30),
+            IsUnlocked = weeklyActiveMinutes >= 30
+        });
+
+        return badges;
     }
 
-    // ==========================================
-    // 5. CUSTOM ROUTINES (PERSISTENCE)
-    // ==========================================
+    private Achievement CreateTieredBadge(
+        string baseId, string title, string descriptionPattern, string icon,
+        int currentValue, int[] tiers)
+    {
+        int currentTierIndex = 0;
 
+        // Find current tier target
+        while (currentTierIndex < tiers.Length && currentValue >= tiers[currentTierIndex])
+        {
+            currentTierIndex++;
+        }
+
+        bool isFullyMaxed = currentTierIndex >= tiers.Length;
+        int target = isFullyMaxed ? tiers[^1] : tiers[currentTierIndex];
+
+        string tierLabel = currentTierIndex switch
+        {
+            0 => "Bronze",
+            1 => "Silver",
+            2 => "Gold",
+            3 => "Platinum",
+            _ => "Master"
+        };
+
+        return new Achievement
+        {
+            Id = $"{baseId}_tier_{currentTierIndex}",
+            Title = $"{title} ({tierLabel})",
+            Description = string.Format(descriptionPattern, target),
+            Icon = icon,
+            Category = "Lifetime",
+            Target = target,
+            Progress = Math.Min(currentValue, target),
+            IsUnlocked = currentValue >= target && isFullyMaxed
+        };
+    }
     public async Task SaveRoutineAsync(Routine routine, List<RoutineStep> steps)
     {
         await InitAsync();
@@ -287,22 +324,19 @@ public class DatabaseService
                          .OrderBy(s => s.StepOrder)
                          .ToListAsync();
     }
-
-    public async Task<List<RoutineRecord>> GetCustomRoutineRecordsAsync()
+    public async Task SaveDailyStepsAsync(DateTime date, int steps)
     {
         await InitAsync();
-        return await _db!.Table<RoutineRecord>().ToListAsync();
+
+        // Store daily step count in SQLite
+        var existingRecord = await _db!.Table<WorkoutRecord>()
+                                      .FirstOrDefaultAsync(w => w.Date.Date == date.Date);
+
+        if (existingRecord != null)
+        {
+            existingRecord.TotalSteps = steps;
+            await _db.UpdateAsync(existingRecord);
+        }
     }
 
-    public async Task<int> SaveRoutineRecordAsync(RoutineRecord routine)
-    {
-        await InitAsync();
-        return await _db!.InsertAsync(routine);
-    }
-
-    public async Task<int> DeleteRoutineRecordAsync(RoutineRecord routine)
-    {
-        await InitAsync();
-        return await _db!.DeleteAsync(routine);
-    }
 }

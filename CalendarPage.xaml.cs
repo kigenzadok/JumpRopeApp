@@ -27,20 +27,18 @@ public partial class CalendarPage : ContentPage
     private async Task RefreshDataAsync()
     {
         _allWorkouts = await _dbService.GetWorkoutsAsync();
-
-        // Use ?? DateTime.Today to safely handle nullable DateTime? values
-        DateTime selectedDate = WorkoutDatePicker.Date ?? DateTime.Today;
-
-        UpdateMonthlySummary(selectedDate);
-        FilterDayWorkouts(selectedDate);
+        UpdateMonthlySummary(WorkoutDatePicker.Date ?? DateTime.Today);
+        FilterDayWorkouts(WorkoutDatePicker.Date ?? DateTime.Today);
     }
 
-    private void OnDateSelected(object sender, DateChangedEventArgs e)
-    {
-        DateTime selectedDate = e.NewDate ?? DateTime.Today;
-        UpdateMonthlySummary(selectedDate);
-        FilterDayWorkouts(selectedDate);
-    }
+   private void OnDateSelected(object sender, DateChangedEventArgs e)
+{
+    // Fallback to today's date if e.NewDate happens to be null
+    DateTime selectedDate = e.NewDate ?? DateTime.Today;
+
+    UpdateMonthlySummary(selectedDate);
+    FilterDayWorkouts(selectedDate);
+}
 
     private void FilterDayWorkouts(DateTime targetDate)
     {
@@ -63,12 +61,11 @@ public partial class CalendarPage : ContentPage
             .ToList();
 
         int totalJumps = monthRecords.Sum(w => w.TotalJumps);
-        int totalSteps = monthRecords.Sum(w => w.DailySteps);
         int totalSecs = monthRecords.Sum(w => w.DurationSeconds);
         double totalCalories = monthRecords.Sum(w => w.CaloriesBurned);
 
         MonthlyJumpsLabel.Text = totalJumps.ToString("N0");
-        MonthlyStepsLabel.Text = totalSteps.ToString("N0");
+        MonthlyTimeLabel.Text = $"{totalSecs / 60}m {totalSecs % 60}s";
         MonthlyCaloriesLabel.Text = $"{totalCalories:N0} kcal";
     }
 
@@ -76,7 +73,7 @@ public partial class CalendarPage : ContentPage
     {
         if (sender is SwipeItem swipeItem && swipeItem.CommandParameter is WorkoutRecord record)
         {
-            bool confirm = await DisplayAlertAsync("Confirm Delete", "...", "Delete", "Cancel");
+            bool confirm = await DisplayAlertAsync("Confirm Delete", "Are you sure you want to delete this workout log?", "Delete", "Cancel");
             if (confirm)
             {
                 await _dbService.DeleteWorkoutAsync(record);
@@ -84,5 +81,4 @@ public partial class CalendarPage : ContentPage
             }
         }
     }
-   
 }

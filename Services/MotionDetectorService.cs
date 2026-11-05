@@ -5,67 +5,52 @@ namespace JumpRopeApp.Services;
 
 public class MotionDetectorService
 {
-    public event Action? OnJumpDetected;
-    private bool _isTracking = false;
+    private bool _isTracking;
     private DateTime _lastJumpTime = DateTime.MinValue;
+
+    // Sensitivity threshold (Adjust between 1.8 and 2.5 depending on placement)
+    private const double JumpThresholdG = 2.0;
+    private const int DebounceMs = 250; // Minimum time between jumps
+
+    public event Action? OnJumpDetected;
 
     public void StartTracking()
     {
-        if (_isTracking) return;
+        if (_isTracking || !Accelerometer.Default.IsSupported) return;
 
-        try
-        {
-            if (Accelerometer.Default.IsSupported)
-            {
-                Accelerometer.Default.ReadingChanged += Accelerometer_ReadingChanged;
-                Accelerometer.Default.Start(SensorSpeed.UI);
-                _isTracking = true;
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Failed to start accelerometer: {ex.Message}");
-        }
+        Accelerometer.Default.ReadingChanged += OnAccelerometerReadingChanged;
+        Accelerometer.Default.Start(SensorSpeed.UI);
+        _isTracking = true;
     }
 
     public void StopTracking()
     {
-        if (!_isTracking) return;
+        if (!_isTracking || !Accelerometer.Default.IsSupported) return;
 
-        try
-        {
-            if (Accelerometer.Default.IsSupported)
-            {
-                Accelerometer.Default.Stop();
-                Accelerometer.Default.ReadingChanged -= Accelerometer_ReadingChanged;
-                _isTracking = false;
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Failed to stop accelerometer: {ex.Message}");
-        }
+        Accelerometer.Default.ReadingChanged -= OnAccelerometerReadingChanged;
+        Accelerometer.Default.Stop();
+        _isTracking = false;
     }
 
-    private void Accelerometer_ReadingChanged(object? sender, AccelerometerChangedEventArgs e)
+    private void OnAccelerometerReadingChanged(object? sender, AccelerometerChangedEventArgs e)
     {
-        var data = e.Reading;
+        var data = e.Reading.Acceleration;
 
-        // Calculate the total G-force magnitude from the 3 axes (X, Y, Z)
-        double magnitude = Math.Sqrt(
-            (data.Acceleration.X * data.Acceleration.X) +
-            (data.Acceleration.Y * data.Acceleration.Y) +
-            (data.Acceleration.Z * data.Acceleration.Z));
+        // Calculate total G-force magnitude: sqrt(x^2 + y^2 + z^2)
+        double totalG = Math.Sqrt(data.X * data.X + data.Y * data.Y + data.Z * data.Z);
 
-        // When jumping rope, acceleration spikes past standard gravity (~1.0)
-        // Threshold set to 1.8g with a 250ms debounce window to prevent double-counting per jump
-        if (magnitude > 1.8)
+        // Detect jump peak
+        if (totalG > JumpThresholdG)
         {
-            var now = DateTime.Now;
-            if ((now - _lastJumpTime).TotalMilliseconds > 250)
+            if ((DateTime.Now - _lastJumpTime).TotalMilliseconds > DebounceMs)
             {
-                _lastJumpTime = now;
-                OnJumpDetected?.Invoke();
+                _lastJumpTime = DateTime.Now;
+
+                // Notify subscribers (MainPage / Active Workout UI) on Main Thread
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    OnJumpDetected?.Invoke();
+                });
             }
         }
     }
