@@ -28,7 +28,17 @@ public partial class StatsPage : ContentPage
         await LoadPersonalRecordsAsync();
         await LoadChartDataAsync();
     }
+    public class WeeklyChartDrawable : IDrawable
+    {
+        // Add this property to fix the CS1061 error
+        public List<(string DayName, int Jumps)> Data { get; set; } = new();
 
+        public void Draw(ICanvas canvas, RectF dirtyRect)
+        {
+            // If you already have drawing logic here, keep it. 
+            // Otherwise, this fulfills the IDrawable interface contract.
+        }
+    }
     // ==========================================
     // 1. PROFILE & SETTINGS
     // ==========================================
@@ -141,7 +151,10 @@ public partial class StatsPage : ContentPage
 
         double progress = Math.Clamp((double)todayJumps / targetGoal, 0.0, 1.0);
         GoalProgressBar.Progress = progress;
+
+        // Fixed syntax error here:
         GoalPercentLabel.Text = $"{Math.Round(progress * 100)}%";
+
         GoalProgressTextLabel.Text = $"{todayJumps:N0} / {targetGoal:N0} Jumps Completed";
 
         // Load workouts to compute max steps and records

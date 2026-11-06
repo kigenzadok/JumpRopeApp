@@ -13,13 +13,19 @@ public partial class App : Application
 
     private const string StepCountKey = "SavedDailySteps";
     private const string StepDateKey = "SavedStepDate";
-
+    
+    public static void NotifyStepUpdate(int steps)
+    {
+        DailyStepCount = steps;
+        OnDailyStepsUpdated?.Invoke(steps);
+    }
     public App()
     {
         InitializeComponent();
 
         LoadSavedStepCount();
         _ = InitializeStepTrackerAsync();
+        MainPage = new AppShell();
     }
 
     protected override Window CreateWindow(IActivationState? activationState)

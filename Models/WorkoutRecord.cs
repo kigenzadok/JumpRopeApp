@@ -16,6 +16,6 @@ public class WorkoutRecord
 
     public int JumpSecs { get; set; }
     public int RestSecs { get; set; }
-    public int TotalSteps { get; set; } // Make sure this line exists
-    public int DailySteps { get; set; }
+    public int TotalSteps { get; set; }
+    public int DailySteps { get; set; } // Added daily steps tracking
 }

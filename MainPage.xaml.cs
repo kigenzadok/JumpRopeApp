@@ -1,5 +1,4 @@
 ﻿using JumpRopeApp.Models;
-using JumpRopeApp.Services; // or your correct namespace for services
 using Microsoft.Maui.Dispatching;
 using System;
 using System.Timers;
@@ -28,17 +27,35 @@ public partial class MainPage : ContentPage
         InitializeComponent();
     }
 
-    protected override void OnAppearing()
+    protected override async void OnAppearing()
     {
         base.OnAppearing();
+
+        // Request Android 14+ physical activity sensor permission safely
+        if (DeviceInfo.Platform == DevicePlatform.Android)
+        {
+            try
+            {
+                var status = await Permissions.CheckStatusAsync<Permissions.Sensors>();
+                if (status != PermissionStatus.Granted)
+                {
+                    await Permissions.RequestAsync<Permissions.Sensors>();
+                }
+            }
+            catch (Exception)
+            {
+                // Fallback or handle if sensors permission isn't mapped directly
+            }
+        }
+
         UpdateTimerDisplay();
         _motionDetector.OnJumpDetected += HandleJumpDetected;
 
-        // 1. Load current daily and accumulative step counts
+        // 1. Load initial daily steps
         int dailySteps = Preferences.Default.Get("SavedDailySteps", 0);
         UpdateStepDisplay(dailySteps);
 
-        // 2. Subscribe to live step updates from background service
+        // 2. Subscribe to background step service updates
         App.OnDailyStepsUpdated += OnStepsUpdatedFromService;
     }
 
@@ -62,9 +79,9 @@ public partial class MainPage : ContentPage
     {
         DailyStepsTextLabel.Text = dailySteps.ToString("N0");
 
-        // Load accumulative steps saved by background service
-        int accumulativeSteps = Preferences.Default.Get("SavedAccumulativeSteps", dailySteps);
-        AccumulativeStepsLabel.Text = $"{accumulativeSteps:N0} total";
+        // Calculate estimated distance (~0.00076 km per step)
+        double distanceKm = Math.Round(dailySteps * 0.00076, 2);
+        DailyDistanceLabel.Text = $"{distanceKm:N2} km";
 
         // Progress toward 10,000 daily step goal
         double progress = Math.Min(1.0, (double)dailySteps / 10000.0);
@@ -115,7 +132,6 @@ public partial class MainPage : ContentPage
         }
         else
         {
-            // Pause / Stop Workout
             StopWorkout();
         }
     }
@@ -140,10 +156,8 @@ public partial class MainPage : ContentPage
             }
             else
             {
-                // Phase finished
                 if (!_isResting && _restDuration > 0)
                 {
-                    // Switch to Rest phase
                     _isResting = true;
                     _remainingSeconds = _restDuration;
                     StatusBadge.BackgroundColor = Color.FromArgb("#F59E0B");
@@ -151,7 +165,6 @@ public partial class MainPage : ContentPage
                 }
                 else
                 {
-                    // Next Set or Complete Workout
                     if (_currentSet < _totalSets)
                     {
                         _currentSet++;
@@ -162,7 +175,6 @@ public partial class MainPage : ContentPage
                     }
                     else
                     {
-                        // Workout Finished!
                         CompleteWorkout();
                     }
                 }
@@ -193,19 +205,19 @@ public partial class MainPage : ContentPage
     {
         StopWorkout();
 
-        // Save workout record to database including current daily steps
         var record = new WorkoutRecord
         {
             Date = DateTime.Now,
             TotalJumps = _totalJumpsInWorkout,
             DurationSeconds = _totalDurationSeconds,
             CaloriesBurned = _totalCaloriesBurned,
-            DailySteps = Preferences.Default.Get("SavedDailySteps", 0)
+            DailySteps = Preferences.Default.Get("SavedDailySteps", 0),
+            SetsCompleted = _totalSets
         };
 
         await _dbService.SaveWorkoutAsync(record);
 
-        // Show summary modal
+        // Show Summary Modal
         SummaryJumpsLabel.Text = _totalJumpsInWorkout.ToString("N0");
         SummarySetsLabel.Text = _totalSets.ToString();
         SummaryDurationLabel.Text = $"{_totalDurationSeconds / 60}m {_totalDurationSeconds % 60}s";
@@ -229,7 +241,6 @@ public partial class MainPage : ContentPage
         UpdateTimerDisplay();
     }
 
-    // Quick Presets
     private void OnPresetBeginnerClicked(object sender, EventArgs e)
     {
         JumpSecsEntry.Text = "30"; RestSecsEntry.Text = "15"; TotalSetsEntry.Text = "6"; RpmEntry.Text = "100";

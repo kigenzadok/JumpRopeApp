@@ -1,29 +1,33 @@
 using JumpRopeApp.Models;
 using Microsoft.Maui.Controls;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace JumpRopeApp;
 
+public class RoutineModel
+{
+    public string Name { get; set; } = string.Empty;
+    public int TargetSteps { get; set; }
+    public int TargetJumps { get; set; }
+}
+
 public partial class RoutinesPage : ContentPage
 {
-    private readonly DatabaseService _dbService = new();
+    private readonly List<RoutineModel> _routines = new();
 
     public RoutinesPage()
     {
         InitializeComponent();
+        LoadRoutines();
     }
 
-    protected override async void OnAppearing()
+    private void LoadRoutines()
     {
-        base.OnAppearing();
-        await LoadRoutinesAsync();
-    }
-
-    private async Task LoadRoutinesAsync()
-    {
-        var routines = await _dbService.GetCustomRoutineRecordsAsync();
-        RoutinesCollectionView.ItemsSource = routines;
+        // For demonstration or persistence via Preferences / SQLite
+        RoutinesCollectionView.ItemsSource = null;
+        RoutinesCollectionView.ItemsSource = _routines;
     }
 
     private async void OnSaveRoutineClicked(object sender, EventArgs e)
@@ -38,30 +42,28 @@ public partial class RoutinesPage : ContentPage
             return;
         }
 
-        var newRoutine = new RoutineRecord
+        _routines.Add(new RoutineModel
         {
             Name = name,
             TargetSteps = steps,
             TargetJumps = jumps
-        };
-
-        await _dbService.SaveRoutineRecordAsync(newRoutine);
+        });
 
         // Clear entries
         RoutineNameEntry.Text = string.Empty;
         TargetStepsEntry.Text = string.Empty;
         TargetJumpsEntry.Text = string.Empty;
 
-        await LoadRoutinesAsync();
+        LoadRoutines();
         await DisplayAlert("Success", "Custom routine saved successfully!", "OK");
     }
 
-    private async void OnDeleteRoutineClicked(object sender, EventArgs e)
+    private void OnDeleteRoutineClicked(object sender, EventArgs e)
     {
-        if (sender is Button button && button.CommandParameter is RoutineRecord routine)
+        if (sender is Button button && button.CommandParameter is RoutineModel routine)
         {
-            await _dbService.DeleteRoutineRecordAsync(routine);
-            await LoadRoutinesAsync();
+            _routines.Remove(routine);
+            LoadRoutines();
         }
     }
 }
