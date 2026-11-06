@@ -4,7 +4,6 @@ using Android.Hardware;
 using Android.OS;
 using Android.Runtime;
 using AndroidX.Core.App;
-using JumpRopeApp;
 using System;
 
 namespace JumpRopeApp.Platforms.Android;
@@ -38,7 +37,6 @@ public class StepForegroundService : Service, ISensorEventListener
 
         if (lastSavedDate != today)
         {
-            // New day detected! Reset daily count baseline
             Microsoft.Maui.Storage.Preferences.Default.Set(KeySavedDate, today);
             Microsoft.Maui.Storage.Preferences.Default.Set("SavedDailySteps", 0);
             _rawInitialSensorSteps = -1;
@@ -67,29 +65,27 @@ public class StepForegroundService : Service, ISensorEventListener
     {
         if (e?.Sensor?.Type == SensorType.StepCounter && e.Values != null && e.Values.Count > 0)
         {
-            int currentRawSteps = (int)e.Values[0];
+            int currentRawHardwareSteps = (int)e.Values[0];
+            string today = DateTime.Today.ToString("yyyy-MM-dd");
+            string savedDate = Microsoft.Maui.Storage.Preferences.Default.Get(KeySavedDate, string.Empty);
 
-            if (_rawInitialSensorSteps == -1)
+            // Check if day changed or baseline isn't set yet
+            if (savedDate != today || _rawInitialSensorSteps == -1)
             {
-                _rawInitialSensorSteps = currentRawSteps;
-                Microsoft.Maui.Storage.Preferences.Default.Set(KeyInitialRawSteps, currentRawSteps);
+                _rawInitialSensorSteps = currentRawHardwareSteps;
+                Microsoft.Maui.Storage.Preferences.Default.Set(KeySavedDate, today);
+                Microsoft.Maui.Storage.Preferences.Default.Set(KeyInitialRawSteps, _rawInitialSensorSteps);
+                Microsoft.Maui.Storage.Preferences.Default.Set("SavedDailySteps", 0);
             }
 
-            // Calculate steps taken today since midnight baseline
-            int dailySteps = Math.Max(0, currentRawSteps - _rawInitialSensorSteps);
+            // Calculate daily steps as the difference between current hardware total and today's midnight baseline
+            int dailySteps = Math.Max(0, currentRawHardwareSteps - _rawInitialSensorSteps);
 
-            // Calculate total lifetime/accumulative steps across days
-            int lifetimeBase = Microsoft.Maui.Storage.Preferences.Default.Get(KeyLifetimeOffset, 0);
-            int accumulativeSteps = lifetimeBase + dailySteps;
-
-            // Save values
             Microsoft.Maui.Storage.Preferences.Default.Set("SavedDailySteps", dailySteps);
-            Microsoft.Maui.Storage.Preferences.Default.Set("SavedAccumulativeSteps", accumulativeSteps);
 
-            // Notify app UI
             App.NotifyStepUpdate(dailySteps);
 
-            UpdateNotification($"Today: {dailySteps:N0} | Total: {accumulativeSteps:N0}");
+            UpdateNotification($"Today's Steps: {dailySteps:N0}");
         }
     }
 

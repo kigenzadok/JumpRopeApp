@@ -1,7 +1,16 @@
 ﻿using JumpRopeApp.Models;
+using Microsoft.Maui.ApplicationModel;
+using Microsoft.Maui.Devices;
 using Microsoft.Maui.Dispatching;
+using Microsoft.Maui.Storage;
 using System;
 using System.Timers;
+
+#if ANDROID
+using Android.App;
+using Android.Content;
+using Android.OS;
+#endif
 
 namespace JumpRopeApp;
 
@@ -31,31 +40,67 @@ public partial class MainPage : ContentPage
     {
         base.OnAppearing();
 
-        // Request Android 14+ physical activity sensor permission safely
+        // 1. Request Android runtime permissions safely while UI is active
         if (DeviceInfo.Platform == DevicePlatform.Android)
         {
             try
             {
-                var status = await Permissions.CheckStatusAsync<Permissions.Sensors>();
-                if (status != PermissionStatus.Granted)
+                var sensorStatus = await Permissions.CheckStatusAsync<Permissions.Sensors>();
+                if (sensorStatus != PermissionStatus.Granted)
                 {
                     await Permissions.RequestAsync<Permissions.Sensors>();
                 }
+
+#if ANDROID
+                if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.Tiramisu)
+#endif
+                {
+                    var notifStatus = await Permissions.CheckStatusAsync<Permissions.PostNotifications>();
+                    if (notifStatus != PermissionStatus.Granted)
+                    {
+                        await Permissions.RequestAsync<Permissions.PostNotifications>();
+                    }
+                }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Fallback or handle if sensors permission isn't mapped directly
+                System.Diagnostics.Debug.WriteLine($"Permission error: {ex.Message}");
+            }
+        }
+
+        // 2. Safely start the Foreground Service using platform context
+        if (DeviceInfo.Platform == DevicePlatform.Android)
+        {
+            try
+            {
+#if ANDROID
+                var context = Microsoft.Maui.ApplicationModel.Platform.CurrentActivity ?? Android.App.Application.Context;
+                var intent = new Android.Content.Intent(context, typeof(Platforms.Android.StepForegroundService));
+
+                if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.O)
+                {
+                    context.StartForegroundService(intent);
+                }
+                else
+                {
+                    context.StartService(intent);
+                }
+#endif
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to start service: {ex.Message}");
             }
         }
 
         UpdateTimerDisplay();
         _motionDetector.OnJumpDetected += HandleJumpDetected;
 
-        // 1. Load initial daily steps
+        // 3. Load initial daily steps
         int dailySteps = Preferences.Default.Get("SavedDailySteps", 0);
         UpdateStepDisplay(dailySteps);
 
-        // 2. Subscribe to background step service updates
+        // 4. Subscribe to background step service updates
         App.OnDailyStepsUpdated += OnStepsUpdatedFromService;
     }
 

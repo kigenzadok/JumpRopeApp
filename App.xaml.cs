@@ -2,7 +2,6 @@
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Storage;
 using System;
-using System.Threading.Tasks;
 
 namespace JumpRopeApp;
 
@@ -23,10 +22,8 @@ public partial class App : Application
     public App()
     {
         InitializeComponent();
-
         LoadSavedStepCount();
-        _ = InitializeStepTrackerAsync();
-        MainPage = new AppShell();
+       // MainPage = new AppShell();
     }
 
     protected override Window CreateWindow(IActivationState? activationState)
@@ -49,45 +46,5 @@ public partial class App : Application
             Preferences.Default.Set(StepCountKey, 0);
             Preferences.Default.Set(StepDateKey, todayDate);
         }
-    }
-
-    private async Task InitializeStepTrackerAsync()
-    {
-#if ANDROID
-        try
-        {
-            if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.Q)
-            {
-                var sensorStatus = await Permissions.CheckStatusAsync<Permissions.Sensors>();
-                if (sensorStatus != PermissionStatus.Granted)
-                {
-                    await Permissions.RequestAsync<Permissions.Sensors>();
-                }
-            }
-
-            if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.Tiramisu)
-            {
-                var notifStatus = await Permissions.CheckStatusAsync<Permissions.PostNotifications>();
-                if (notifStatus != PermissionStatus.Granted)
-                {
-                    await Permissions.RequestAsync<Permissions.PostNotifications>();
-                }
-            }
-
-            var intent = new Android.Content.Intent(Android.App.Application.Context, typeof(Platforms.Android.StepForegroundService));
-            if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.O)
-            {
-                Android.App.Application.Context.StartForegroundService(intent);
-            }
-            else
-            {
-                Android.App.Application.Context.StartService(intent);
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Failed to start service: {ex.Message}");
-        }
-#endif
     }
 }

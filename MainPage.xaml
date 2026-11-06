@@ -16,13 +16,15 @@
                     <VerticalStackLayout Spacing="12">
 
                         <!-- Header row -->
-                        <Grid ColumnDefinitions="*,Auto">
+                        <Grid ColumnDefinitions="*,*">
                             <VerticalStackLayout Spacing="2">
                                 <Label Text="DAILY MOVEMENT" FontSize="10" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#64748B, Dark=#94A3B8}" />
                                 <HorizontalStackLayout Spacing="6">
                                     <Label x:Name="DailyStepsTextLabel" Text="0" FontSize="24" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
                                     <Label Text="steps today" FontSize="12" VerticalTextAlignment="End" TextColor="{AppThemeBinding Light=#64748B, Dark=#94A3B8}" />
                                 </HorizontalStackLayout>
+                                <!-- Distance Label bound correctly -->
+                                <Label x:Name="DailyDistanceLabel" Text="0.00 km" FontSize="11" TextColor="{AppThemeBinding Light=#64748B, Dark=#94A3B8}" />
                             </VerticalStackLayout>
 
                             <VerticalStackLayout Grid.Column="1" HorizontalOptions="End" Spacing="2">
