@@ -69,7 +69,6 @@ public class StepForegroundService : Service, ISensorEventListener
             string today = DateTime.Today.ToString("yyyy-MM-dd");
             string savedDate = Microsoft.Maui.Storage.Preferences.Default.Get(KeySavedDate, string.Empty);
 
-            // Check if day changed or baseline isn't set yet
             if (savedDate != today || _rawInitialSensorSteps == -1)
             {
                 _rawInitialSensorSteps = currentRawHardwareSteps;
@@ -78,14 +77,24 @@ public class StepForegroundService : Service, ISensorEventListener
                 Microsoft.Maui.Storage.Preferences.Default.Set("SavedDailySteps", 0);
             }
 
-            // Calculate daily steps as the difference between current hardware total and today's midnight baseline
             int dailySteps = Math.Max(0, currentRawHardwareSteps - _rawInitialSensorSteps);
 
+            // Compute accumulative lifetime steps delta
+            int lastRaw = Microsoft.Maui.Storage.Preferences.Default.Get("LastRawSensorSteps", currentRawHardwareSteps);
+            int stepDelta = Math.Max(0, currentRawHardwareSteps - lastRaw);
+            if (currentRawHardwareSteps < lastRaw) stepDelta = currentRawHardwareSteps; // Device rebooted
+
+            Microsoft.Maui.Storage.Preferences.Default.Set("LastRawSensorSteps", currentRawHardwareSteps);
+
+            int savedAccumulative = Microsoft.Maui.Storage.Preferences.Default.Get("SavedAccumulativeSteps", 0);
+            int accumulativeSteps = savedAccumulative + stepDelta;
+
+            Microsoft.Maui.Storage.Preferences.Default.Set("SavedAccumulativeSteps", accumulativeSteps);
             Microsoft.Maui.Storage.Preferences.Default.Set("SavedDailySteps", dailySteps);
 
-            App.NotifyStepUpdate(dailySteps);
+            App.NotifyStepUpdate(dailySteps, accumulativeSteps);
 
-            UpdateNotification($"Today's Steps: {dailySteps:N0}");
+            UpdateNotification($"Today: {dailySteps:N0} | Total: {accumulativeSteps:N0}");
         }
     }
 

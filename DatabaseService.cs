@@ -108,13 +108,17 @@ public class DatabaseService
     public async Task<(int maxJumps, int maxSets, int streak)> GetPersonalRecordsAsync()
     {
         var workouts = await GetWorkoutsAsync();
-        if (workouts.Count == 0) return (0, 0, 0);
+
+        if (workouts == null || !workouts.Any())
+        {
+            return (0, 0, 0);
+        }
 
         int maxJumps = workouts.Max(w => w.TotalJumps);
         int maxSets = workouts.Max(w => w.SetsCompleted);
 
         // Calculate consecutive day streak
-        int streak = 0;
+        int streak = 1;
         var uniqueDates = workouts.Select(w => w.Date.Date).Distinct().OrderByDescending(d => d).ToList();
 
         DateTime checkDate = DateTime.Today;

@@ -96,11 +96,12 @@ public partial class MainPage : ContentPage
         UpdateTimerDisplay();
         _motionDetector.OnJumpDetected += HandleJumpDetected;
 
-        // 3. Load initial daily steps
+        // 1. Load initial daily & accumulative steps
         int dailySteps = Preferences.Default.Get("SavedDailySteps", 0);
-        UpdateStepDisplay(dailySteps);
+        int accumSteps = Preferences.Default.Get("SavedAccumulativeSteps", 0);
+        UpdateStepDisplay(dailySteps, accumSteps);
 
-        // 4. Subscribe to background step service updates
+        // 2. Subscribe to background step service updates
         App.OnDailyStepsUpdated += OnStepsUpdatedFromService;
     }
 
@@ -112,17 +113,18 @@ public partial class MainPage : ContentPage
         App.OnDailyStepsUpdated -= OnStepsUpdatedFromService;
     }
 
-    private void OnStepsUpdatedFromService(int newSteps)
+    private void OnStepsUpdatedFromService(int daily, int accumulative)
     {
         MainThread.BeginInvokeOnMainThread(() =>
         {
-            UpdateStepDisplay(newSteps);
+            UpdateStepDisplay(daily, accumulative);
         });
     }
 
-    private void UpdateStepDisplay(int dailySteps)
+    private void UpdateStepDisplay(int dailySteps, int accumulativeSteps)
     {
         DailyStepsTextLabel.Text = dailySteps.ToString("N0");
+        AccumulativeStepsLabel.Text = accumulativeSteps.ToString("N0");
 
         // Calculate estimated distance (~0.00076 km per step)
         double distanceKm = Math.Round(dailySteps * 0.00076, 2);
@@ -300,4 +302,5 @@ public partial class MainPage : ContentPage
     {
         JumpSecsEntry.Text = "60"; RestSecsEntry.Text = "30"; TotalSetsEntry.Text = "10"; RpmEntry.Text = "110";
     }
+
 }

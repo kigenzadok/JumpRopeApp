@@ -8,15 +8,17 @@ namespace JumpRopeApp;
 public partial class App : Application
 {
     public static int DailyStepCount { get; private set; } = 0;
-    public static event Action<int>? OnDailyStepsUpdated;
+    public static event Action<int, int>? OnDailyStepsUpdated;
 
     private const string StepCountKey = "SavedDailySteps";
     private const string StepDateKey = "SavedStepDate";
+    public static int AccumulativeStepCount { get; private set; } = 0;
 
-    public static void NotifyStepUpdate(int newSteps)
+    public static void NotifyStepUpdate(int daily, int accumulative)
     {
-        DailyStepCount = newSteps;
-        OnDailyStepsUpdated?.Invoke(newSteps);
+        DailyStepCount = daily;
+        AccumulativeStepCount = accumulative;
+        OnDailyStepsUpdated?.Invoke(daily, accumulative);
     }
 
     public App()

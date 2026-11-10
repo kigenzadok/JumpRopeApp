@@ -1,7 +1,9 @@
 using JumpRopeApp.Models;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
+using Microsoft.Maui.Storage;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -11,34 +13,35 @@ namespace JumpRopeApp;
 public partial class StatsPage : ContentPage
 {
     private readonly DatabaseService _dbService = new();
-    private readonly WeeklyChartDrawable _chartDrawable = new();
+    private readonly JumpsChartDrawable _jumpsChartDrawable = new();
+    private readonly StepsChartDrawable _stepsChartDrawable = new();
     private bool _hasExistingProfile = false;
 
     public StatsPage()
     {
         InitializeComponent();
-        ChartGraphicsView.Drawable = _chartDrawable;
+        JumpsChartGraphicsView.Drawable = _jumpsChartDrawable;
+        StepsChartGraphicsView.Drawable = _stepsChartDrawable;
     }
 
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        await LoadProfileAsync();
-        await LoadStatsAsync();
-        await LoadPersonalRecordsAsync();
-        await LoadChartDataAsync();
-    }
-    public class WeeklyChartDrawable : IDrawable
-    {
-        // Add this property to fix the CS1061 error
-        public List<(string DayName, int Jumps)> Data { get; set; } = new();
 
-        public void Draw(ICanvas canvas, RectF dirtyRect)
+        try
         {
-            // If you already have drawing logic here, keep it. 
-            // Otherwise, this fulfills the IDrawable interface contract.
+            await LoadProfileAsync();
+            await LoadStatsAsync();
+            await LoadPersonalRecordsAsync();
+            await LoadChartDataAsync();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"CRASH IN STATSPAGE: {ex.Message} \n {ex.StackTrace}");
+            await DisplayAlert("Error Loading Stats", ex.Message, "OK");
         }
     }
+
     // ==========================================
     // 1. PROFILE & SETTINGS
     // ==========================================
@@ -144,6 +147,14 @@ public partial class StatsPage : ContentPage
         int avg = workouts > 0 ? jumps / workouts : 0;
         AvgJumpsLabel.Text = avg.ToString("N0");
 
+        // Calculate total lifetime steps from saved workouts + current accumulator
+        var workoutsList = await _dbService.GetWorkoutsAsync();
+        int totalStepsFromWorkouts = workoutsList != null ? workoutsList.Sum(w => w.DailySteps) : 0;
+        int currentAccumulativeSteps = Preferences.Get("SavedAccumulativeSteps", 0);
+        int totalLifetimeSteps = Math.Max(totalStepsFromWorkouts, currentAccumulativeSteps);
+
+        LifetimeStepsLabel.Text = totalLifetimeSteps.ToString("N0");
+
         // Today's Goal Progress
         var (todaySets, todayJumps) = await _dbService.GetDayStatsAsync(DateTime.Now);
         var profile = await _dbService.GetProfileAsync();
@@ -151,14 +162,9 @@ public partial class StatsPage : ContentPage
 
         double progress = Math.Clamp((double)todayJumps / targetGoal, 0.0, 1.0);
         GoalProgressBar.Progress = progress;
-
-        // Fixed syntax error here:
         GoalPercentLabel.Text = $"{Math.Round(progress * 100)}%";
-
         GoalProgressTextLabel.Text = $"{todayJumps:N0} / {targetGoal:N0} Jumps Completed";
 
-        // Load workouts to compute max steps and records
-        var workoutsList = await _dbService.GetWorkoutsAsync();
         if (workoutsList != null && workoutsList.Any())
         {
             int mostSteps = workoutsList.Max(w => w.DailySteps);
@@ -180,13 +186,161 @@ public partial class StatsPage : ContentPage
 
     private async Task LoadChartDataAsync()
     {
-        var weeklyData = await _dbService.GetWeeklyJumpTotalsAsync();
-        _chartDrawable.Data = weeklyData;
-        ChartGraphicsView.Invalidate();
+        try
+        {
+            // 1. Safely fetch weekly jumps with null protection
+            var weeklyJumps = await _dbService.GetWeeklyJumpTotalsAsync() ?? new();
+
+            if (weeklyJumps.Any())
+            {
+                _jumpsChartDrawable.Data = weeklyJumps.Select(d => (d.DayName, d.Jumps)).ToList();
+            }
+            else
+            {
+                _jumpsChartDrawable.Data = new();
+            }
+
+            // 2. Safely compute steps for the weekly chart without risking null/format crashes
+            DateTime today = DateTime.Today;
+            var stepDataList = new List<(string DayName, int Steps)>();
+
+            foreach (var item in weeklyJumps)
+            {
+                int steps = 0;
+                try
+                {
+                    // Check if it's today
+                    if (item.DayName.Equals(today.ToString("ddd", System.Globalization.CultureInfo.InvariantCulture), StringComparison.OrdinalIgnoreCase))
+                    {
+                        steps = Preferences.Get("SavedDailySteps", 0);
+                    }
+                    else
+                    {
+                        // Look back through recent days safely
+                        for (int i = 1; i <= 7; i++)
+                        {
+                            DateTime pastDate = today.AddDays(-i);
+                            if (pastDate.ToString("ddd", System.Globalization.CultureInfo.InvariantCulture)
+                                .Equals(item.DayName, StringComparison.OrdinalIgnoreCase))
+                            {
+                                string dateKey = $"Steps_{pastDate:yyyy-MM-dd}";
+                                steps = Preferences.Get(dateKey, 0);
+                                break;
+                            }
+                        }
+                    }
+                }
+                catch
+                {
+                    steps = 0; // Fallback safeguard per item
+                }
+
+                stepDataList.Add((item.DayName, steps));
+            }
+
+            _stepsChartDrawable.Data = stepDataList;
+
+            // 3. Invalidate UI safely on main thread
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                JumpsChartGraphicsView?.Invalidate();
+                StepsChartGraphicsView?.Invalidate();
+            });
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error loading chart data: {ex.Message}");
+        }
     }
 
     // ==========================================
-    // 3. CSV EXPORT & RESET
+    // 3. CHART DRAWABLES
+    // ==========================================
+
+    public class JumpsChartDrawable : IDrawable
+    {
+        public List<(string DayName, int Jumps)> Data { get; set; } = new();
+
+        public void Draw(ICanvas canvas, RectF dirtyRect)
+        {
+            canvas.FillColor = Colors.Transparent;
+            canvas.FillRectangle(dirtyRect);
+            if (Data == null || !Data.Any()) return;
+
+            float width = dirtyRect.Width;
+            float height = dirtyRect.Height;
+            int count = Data.Count;
+            float spacing = 8;
+            float barWidth = Math.Max(6, (width - (spacing * (count + 1))) / count);
+            float usableHeight = height - 25;
+
+            canvas.StrokeColor = Color.FromRgba(150, 150, 150, 25);
+            canvas.StrokeSize = 1;
+            canvas.DrawLine(0, 5, width, 5);
+            canvas.DrawLine(0, usableHeight / 2, width, usableHeight / 2);
+            canvas.DrawLine(0, usableHeight, width, usableHeight);
+
+            for (int i = 0; i < count; i++)
+            {
+                var item = Data[i];
+                float x = spacing + i * (barWidth + spacing);
+
+                // Scaled for a 2k maximum limit
+                float barHeight = usableHeight * Math.Clamp((float)item.Jumps / 2000f, 0.04f, 1.0f);
+                float y = usableHeight - barHeight;
+
+                canvas.FillColor = Color.FromArgb("#6366F1");
+                canvas.FillRoundedRectangle(x, y, barWidth, barHeight, barWidth / 2);
+
+                canvas.FontColor = Color.FromArgb("#94A3B8");
+                canvas.FontSize = 9;
+                canvas.DrawString(item.DayName, x - 4, height - 18, barWidth + 8, 15, HorizontalAlignment.Center, VerticalAlignment.Center);
+            }
+        }
+    }
+
+    public class StepsChartDrawable : IDrawable
+    {
+        public List<(string DayName, int Steps)> Data { get; set; } = new();
+
+        public void Draw(ICanvas canvas, RectF dirtyRect)
+        {
+            canvas.FillColor = Colors.Transparent;
+            canvas.FillRectangle(dirtyRect);
+            if (Data == null || !Data.Any()) return;
+
+            float width = dirtyRect.Width;
+            float height = dirtyRect.Height;
+            int count = Data.Count;
+            float spacing = 8;
+            float barWidth = Math.Max(6, (width - (spacing * (count + 1))) / count);
+            float usableHeight = height - 25;
+
+            canvas.StrokeColor = Color.FromRgba(150, 150, 150, 25);
+            canvas.StrokeSize = 1;
+            canvas.DrawLine(0, 5, width, 5);
+            canvas.DrawLine(0, usableHeight / 2, width, usableHeight / 2);
+            canvas.DrawLine(0, usableHeight, width, usableHeight);
+
+            for (int i = 0; i < count; i++)
+            {
+                var item = Data[i];
+                float x = spacing + i * (barWidth + spacing);
+                float barHeight = usableHeight * Math.Clamp((float)item.Steps / 10000f, 0.04f, 1.0f);
+                float y = usableHeight - barHeight;
+
+                canvas.FillColor = Color.FromArgb("#10B981");
+                canvas.FillRoundedRectangle(x, y, barWidth, barHeight, barWidth / 2);
+
+                canvas.FontColor = Color.FromArgb("#94A3B8");
+                canvas.FontSize = 9;
+                canvas.DrawString(item.DayName, x - 4, height - 18, barWidth + 8, 15, HorizontalAlignment.Center, VerticalAlignment.Center);
+            }
+        }
+    }
+
+    // ==========================================
+    // 4. CSV EXPORT & RESET
     // ==========================================
 
     public async void OnExportCsvClicked(object? sender, EventArgs e)
