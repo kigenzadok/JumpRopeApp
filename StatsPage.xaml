@@ -6,6 +6,26 @@
              BackgroundColor="{AppThemeBinding Light=#F4F5F9, Dark=#0F172A}"
              Title="Analytics &amp; Profile">
 
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <Style x:Key="CardStyle" TargetType="Frame">
+                <Setter Property="Background" Value="{AppThemeBinding Light=#FFFFFF, Dark=#111827}" />
+                <Setter Property="BorderColor" Value="{AppThemeBinding Light=#E2E8F0, Dark=#1F2937}" />
+                <Setter Property="CornerRadius" Value="16" />
+                <Setter Property="Padding" Value="16" />
+                <Setter Property="HasShadow" Value="False" />
+            </Style>
+
+            <Style x:Key="StatBoxStyle" TargetType="Frame">
+                <Setter Property="Background" Value="{AppThemeBinding Light=#F8FAFC, Dark=#1F2937}" />
+                <Setter Property="BorderColor" Value="Transparent" />
+                <Setter Property="CornerRadius" Value="12" />
+                <Setter Property="Padding" Value="12" />
+                <Setter Property="HasShadow" Value="False" />
+            </Style>
+        </ResourceDictionary>
+    </ContentPage.Resources>
+
     <ScrollView Padding="20">
         <VerticalStackLayout Spacing="20" MaximumWidthRequest="480">
 
@@ -67,9 +87,8 @@
             <!-- Weekly Jumps Chart Card -->
             <Frame Style="{StaticResource CardStyle}">
                 <VerticalStackLayout Spacing="10">
-                    <Label Text="Weekly Jumps Activity" FontAttributes="Bold" FontSize="14" TextColor="#0F172A" />
+                    <Label Text="Weekly Jumps Activity" FontAttributes="Bold" FontSize="14" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
                     <Grid ColumnDefinitions="40, *" HeightRequest="130">
-                        <!-- Vertical Scale Labels (Adjusted for 2k Max) -->
                         <VerticalStackLayout Grid.Column="0" Spacing="22" VerticalOptions="Center">
                             <Label Text="2k" FontSize="9" TextColor="#94A3B8" HorizontalOptions="End"/>
                             <Label Text="1k" FontSize="9" TextColor="#94A3B8" HorizontalOptions="End"/>
@@ -83,9 +102,8 @@
             <!-- Weekly Steps Chart Card -->
             <Frame Style="{StaticResource CardStyle}">
                 <VerticalStackLayout Spacing="10">
-                    <Label Text="Weekly Steps Activity" FontAttributes="Bold" FontSize="14" TextColor="#0F172A" />
+                    <Label Text="Weekly Steps Activity" FontAttributes="Bold" FontSize="14" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
                     <Grid ColumnDefinitions="40, *" HeightRequest="130">
-                        <!-- Vertical Scale Labels -->
                         <VerticalStackLayout Grid.Column="0" Spacing="22" VerticalOptions="Center">
                             <Label Text="10k" FontSize="9" TextColor="#94A3B8" HorizontalOptions="End"/>
                             <Label Text="5k" FontSize="9" TextColor="#94A3B8" HorizontalOptions="End"/>
@@ -167,7 +185,7 @@
             <!-- Lifetime Overview Card -->
             <Frame Style="{StaticResource CardStyle}">
                 <VerticalStackLayout Spacing="15">
-                    <Label Text="Lifetime Overview" FontAttributes="Bold" FontSize="16" TextColor="#0F172A" />
+                    <Label Text="Lifetime Overview" FontAttributes="Bold" FontSize="16" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
 
                     <!-- Grid of Lifetime Stats -->
                     <Grid ColumnDefinitions="*, *" RowDefinitions="Auto, Auto, Auto" ColumnSpacing="10" RowSpacing="10">
@@ -176,15 +194,15 @@
                         <Frame Grid.Row="0" Grid.Column="0" Style="{StaticResource StatBoxStyle}">
                             <VerticalStackLayout Spacing="2">
                                 <Label Text="TOTAL JUMPS" FontSize="10" TextColor="#6366F1" FontAttributes="Bold"/>
-                                <Label x:Name="AllTimeJumpsLabel" Text="0" FontSize="20" FontAttributes="Bold" TextColor="#0F172A"/>
+                                <Label x:Name="AllTimeJumpsLabel" Text="0" FontSize="20" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}"/>
                             </VerticalStackLayout>
                         </Frame>
 
-                        <!-- Total Steps (NEW) -->
+                        <!-- Total Steps -->
                         <Frame Grid.Row="0" Grid.Column="1" Style="{StaticResource StatBoxStyle}">
                             <VerticalStackLayout Spacing="2">
                                 <Label Text="TOTAL STEPS" FontSize="10" TextColor="#10B981" FontAttributes="Bold"/>
-                                <Label x:Name="LifetimeStepsLabel" Text="0" FontSize="20" FontAttributes="Bold" TextColor="#0F172A"/>
+                                <Label x:Name="LifetimeStepsLabel" Text="0" FontSize="20" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}"/>
                             </VerticalStackLayout>
                         </Frame>
 
@@ -192,7 +210,7 @@
                         <Frame Grid.Row="1" Grid.Column="0" Style="{StaticResource StatBoxStyle}">
                             <VerticalStackLayout Spacing="2">
                                 <Label Text="EST. CALORIES" FontSize="10" TextColor="#EF4444" FontAttributes="Bold"/>
-                                <Label x:Name="TotalCaloriesLabel" Text="0 kcal" FontSize="20" FontAttributes="Bold" TextColor="#0F172A"/>
+                                <Label x:Name="TotalCaloriesLabel" Text="0 kcal" FontSize="20" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}"/>
                             </VerticalStackLayout>
                         </Frame>
 
@@ -200,7 +218,7 @@
                         <Frame Grid.Row="1" Grid.Column="1" Style="{StaticResource StatBoxStyle}">
                             <VerticalStackLayout Spacing="2">
                                 <Label Text="WORKOUTS" FontSize="10" TextColor="#F59E0B" FontAttributes="Bold"/>
-                                <Label x:Name="TotalWorkoutsLabel" Text="0" FontSize="20" FontAttributes="Bold" TextColor="#0F172A"/>
+                                <Label x:Name="TotalWorkoutsLabel" Text="0" FontSize="20" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}"/>
                             </VerticalStackLayout>
                         </Frame>
 
@@ -208,7 +226,7 @@
                         <Frame Grid.Row="2" Grid.Column="0" Style="{StaticResource StatBoxStyle}">
                             <VerticalStackLayout Spacing="2">
                                 <Label Text="AVG / SESSION" FontSize="10" TextColor="#8B5CF6" FontAttributes="Bold"/>
-                                <Label x:Name="AvgJumpsLabel" Text="0" FontSize="20" FontAttributes="Bold" TextColor="#0F172A"/>
+                                <Label x:Name="AvgJumpsLabel" Text="0" FontSize="20" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}"/>
                             </VerticalStackLayout>
                         </Frame>
                     </Grid>
@@ -217,6 +235,9 @@
                     <HorizontalStackLayout Spacing="10" HorizontalOptions="Center">
                         <Button Text="Export CSV" Clicked="OnExportCsvClicked" BackgroundColor="#10B981" TextColor="White" CornerRadius="8" WidthRequest="130" />
                         <Button Text="Reset Stats" Clicked="OnResetStatsClicked" BackgroundColor="#EF4444" TextColor="White" CornerRadius="8" WidthRequest="130" />
+                    </HorizontalStackLayout>
+                    <HorizontalStackLayout Spacing="10" HorizontalOptions="Center">
+                        <Button Text="View Logs" Clicked="OnViewLogsClicked" BackgroundColor="#6366F1" TextColor="White" CornerRadius="8" WidthRequest="100" FontSize="11"/>
                     </HorizontalStackLayout>
                 </VerticalStackLayout>
             </Frame>

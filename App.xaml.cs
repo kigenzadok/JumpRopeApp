@@ -23,6 +23,20 @@ public partial class App : Application
 
     public App()
     {
+        TaskScheduler.UnobservedTaskException += (sender, e) =>
+        {
+            Logger.Log("UNOBSERVED TASK EXCEPTION", e.Exception);
+            e.SetObserved();
+        };
+
+        // 2. Log unhandled domain exceptions
+        AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
+        {
+            if (e.ExceptionObject is Exception ex)
+            {
+                Logger.Log("UNHANDLED DOMAIN EXCEPTION", ex);
+            }
+        };
         InitializeComponent();
         LoadSavedStepCount();
        // MainPage = new AppShell();
@@ -49,4 +63,5 @@ public partial class App : Application
             Preferences.Default.Set(StepDateKey, todayDate);
         }
     }
+
 }

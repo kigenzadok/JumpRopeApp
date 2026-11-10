@@ -27,6 +27,7 @@ public partial class StatsPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        Logger.Log("Navigated to StatsPage - Starting OnAppearing");
 
         try
         {
@@ -34,11 +35,12 @@ public partial class StatsPage : ContentPage
             await LoadStatsAsync();
             await LoadPersonalRecordsAsync();
             await LoadChartDataAsync();
+            Logger.Log("StatsPage loaded successfully");
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"CRASH IN STATSPAGE: {ex.Message} \n {ex.StackTrace}");
-            await DisplayAlert("Error Loading Stats", ex.Message, "OK");
+            Logger.Log("CRASH DETECTED IN STATSPAGE OnAppearing", ex);
+            await DisplayAlertAsync("Crash Diagnostic Captured", $"{ex.Message}\n\nCheck logs via Lifetime Overview.", "OK");
         }
     }
 
@@ -356,19 +358,35 @@ public partial class StatsPage : ContentPage
         }
         else
         {
-            await DisplayAlert("Error", "No workout data available to export.", "OK");
+            await DisplayAlertAsync("Error", "No workout data available to export.", "OK");
         }
     }
 
     public async void OnResetStatsClicked(object? sender, EventArgs e)
     {
-        bool confirm = await DisplayAlert("Reset Stats", "Are you sure you want to reset all lifetime stats?", "Yes", "No");
+        bool confirm = await DisplayAlertAsync("Reset Stats", "Are you sure you want to reset all lifetime stats?", "Yes", "No");
         if (confirm)
         {
             await LoadProfileAsync();
             await LoadStatsAsync();
             await LoadPersonalRecordsAsync();
             await LoadChartDataAsync();
+        }
+    }
+    public async void OnViewLogsClicked(object? sender, EventArgs e)
+    {
+        string logs = Logger.GetLogContent();
+
+        // Display recent diagnostic output
+        bool share = await DisplayAlertAsync("Diagnostic Logs", logs.Length > 1500 ? logs[..1500] + "..." : logs, "Share Log", "Close");
+
+        if (share && File.Exists(Logger.LogFilePath))
+        {
+            await Share.Default.RequestAsync(new ShareFileRequest
+            {
+                Title = "App Diagnostics Log",
+                File = new ShareFile(Logger.LogFilePath)
+            });
         }
     }
 }
