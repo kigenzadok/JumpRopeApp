@@ -30,15 +30,11 @@ public partial class RoutinesPage : ContentPage
         RoutinesCollectionView.ItemsSource = _routines;
     }
 
-    private async void OnSaveRoutineClicked(object sender, EventArgs e)
+    public async void OnSaveRoutineClicked(object? sender, EventArgs e)
     {
-        string name = RoutineNameEntry.Text?.Trim() ?? string.Empty;
-        int.TryParse(TargetStepsEntry.Text, out int steps);
-        int.TryParse(TargetJumpsEntry.Text, out int jumps);
-
-        if (string.IsNullOrEmpty(name))
+        if (string.IsNullOrWhiteSpace(RoutineNameEntry.Text))
         {
-            await DisplayAlert("Error", "Please enter a routine name.", "OK");
+            await DisplayAlertAsync("Error", "Please enter a routine name.", "OK");
             return;
         }
 

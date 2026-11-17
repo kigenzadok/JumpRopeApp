@@ -1,5 +1,4 @@
 using JumpRopeApp.Models;
-using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Storage;
 using System;
@@ -44,29 +43,28 @@ public partial class StatsPage : ContentPage
         }
     }
 
-    // ==========================================
-    // 1. PROFILE & SETTINGS
-    // ==========================================
-
-    private async Task LoadProfileAsync()
+    private async Task LoadDataAsync()
     {
-        var profile = await _dbService.GetProfileAsync();
+        _profile = await _dbService.GetProfileAsync();
+        UpdateProfileUI();
 
-        if (profile != null && (!string.IsNullOrWhiteSpace(profile.Name) || profile.WeightKg > 0 || profile.HeightCm > 0))
-        {
-            _hasExistingProfile = true;
+        // 1. Lifetime Stats
+        var (totalJumps, totalSets, totalWorkouts, totalCalories) = await _dbService.GetLifetimeStatsAsync();
+        AllTimeJumpsLabel.Text = totalJumps.ToString("N0");
+        TotalWorkoutsLabel.Text = totalWorkouts.ToString("N0");
+        TotalCaloriesLabel.Text = $"{totalCalories:N0} kcal";
 
-            DisplayPageNameLabel.Text = string.IsNullOrWhiteSpace(profile.Name) ? "Not set" : profile.Name;
-            DisplayWeightLabel.Text = profile.WeightKg > 0 ? $"{profile.WeightKg} kg" : "-- kg";
-            DisplayHeightLabel.Text = profile.HeightCm > 0 ? $"{profile.HeightCm} cm" : "-- cm";
-            DisplayGoalLabel.Text = profile.DailyJumpGoal > 0 ? profile.DailyJumpGoal.ToString("N0") : "1,000";
+        int avgJumpsPerSet = totalSets > 0 ? totalJumps / totalSets : 0;
+        AvgJumpsLabel.Text = avgJumpsPerSet.ToString("N0");
 
-            NameEntry.Text = profile.Name;
-            WeightEntry.Text = profile.WeightKg > 0 ? profile.WeightKg.ToString() : string.Empty;
-            HeightEntry.Text = profile.HeightCm > 0 ? profile.HeightCm.ToString() : string.Empty;
-            GoalEntry.Text = profile.DailyJumpGoal > 0 ? profile.DailyJumpGoal.ToString() : "1000";
+        // 2. Daily Goal Progress
+        var (todaySets, todayJumps) = await _dbService.GetDayStatsAsync(DateTime.Today);
+        int targetGoal = _profile.DailyTargetJumps > 0 ? _profile.DailyTargetJumps : 5000;
+        double goalProgress = Math.Min(1.0, (double)todayJumps / targetGoal);
 
-            HapticsSwitch.IsToggled = profile.EnableHaptics;
+        GoalProgressTextLabel.Text = $"Today: {todayJumps:N0} / {targetGoal:N0} jumps";
+        GoalPercentLabel.Text = $"{(int)(goalProgress * 100)}%";
+        GoalProgressBar.Progress = goalProgress;
 
             SwitchToViewMode();
         }
@@ -182,9 +180,8 @@ public partial class StatsPage : ContentPage
     {
         var (maxJumps, maxSets, streak) = await _dbService.GetPersonalRecordsAsync();
         PrMostJumpsLabel.Text = maxJumps.ToString("N0");
-        PrMostSetsLabel.Text = maxSets.ToString("N0");
-        PrStreakLabel.Text = $"{streak} Days";
-    }
+        PrMostSetsLabel.Text = maxSets.ToString();
+        PrStreakLabel.Text = $"{streak} days";
 
     private async Task LoadChartDataAsync()
     {
@@ -347,14 +344,33 @@ public partial class StatsPage : ContentPage
 
     public async void OnExportCsvClicked(object? sender, EventArgs e)
     {
-        string filePath = await _dbService.ExportWorkoutsToCsvAsync();
-        if (!string.IsNullOrEmpty(filePath) && File.Exists(filePath))
+        DisplayPageNameLabel.Text = string.IsNullOrWhiteSpace(_profile.Name) ? "👤 User Profile" : $"👤 {_profile.Name}";
+        DisplayWeightLabel.Text = $"Weight: {_profile.WeightKg} kg";
+        DisplayHeightLabel.Text = $"Height: {_profile.HeightCm} cm";
+        DisplayGoalLabel.Text = $"Daily Goal: {_profile.DailyTargetJumps:N0} jumps";
+
+        NameEntry.Text = _profile.Name;
+        WeightEntry.Text = _profile.WeightKg.ToString();
+        HeightEntry.Text = _profile.HeightCm.ToString();
+        GoalEntry.Text = _profile.DailyTargetJumps.ToString();
+        HapticsSwitch.IsToggled = _profile.EnableHaptics;
+    }
+
+    private async void OnEditProfileClicked(object sender, EventArgs e)
+    {
+        if (_isEditingProfile)
         {
-            await Share.Default.RequestAsync(new ShareFileRequest
-            {
-                Title = "Export Jump Rope Workouts",
-                File = new ShareFile(filePath)
-            });
+            // Save Profile Action
+            _profile.Name = NameEntry.Text;
+            _profile.WeightKg = double.TryParse(WeightEntry.Text, out var w) ? w : 70;
+            _profile.HeightCm = double.TryParse(HeightEntry.Text, out var h) ? h : 175;
+            _profile.DailyTargetJumps = int.TryParse(GoalEntry.Text, out var g) ? g : 5000;
+            _profile.EnableHaptics = HapticsSwitch.IsToggled;
+
+            await _dbService.SaveOrUpdateProfileAsync(_profile);
+            _isEditingProfile = false;
+            ToggleEditMode(false);
+            await LoadDataAsync();
         }
         else
         {
@@ -362,15 +378,22 @@ public partial class StatsPage : ContentPage
         }
     }
 
-    public async void OnResetStatsClicked(object? sender, EventArgs e)
+    private void OnCancelProfileClicked(object sender, EventArgs e)
     {
         bool confirm = await DisplayAlertAsync("Reset Stats", "Are you sure you want to reset all lifetime stats?", "Yes", "No");
         if (confirm)
         {
-            await LoadProfileAsync();
-            await LoadStatsAsync();
-            await LoadPersonalRecordsAsync();
-            await LoadChartDataAsync();
+            string csvPath = await _dbService.ExportWorkoutsToCsvAsync();
+            await Share.Default.RequestAsync(new ShareFileRequest
+            {
+                Title = "Export Workout History",
+                File = new ShareFile(csvPath)
+            });
+        }
+        catch (Exception ex)
+        {
+            // Line 131 fix
+            await DisplayAlertAsync("Export Error", ex.Message, "OK");
         }
     }
     public async void OnViewLogsClicked(object? sender, EventArgs e)

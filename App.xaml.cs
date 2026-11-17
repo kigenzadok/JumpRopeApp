@@ -1,4 +1,5 @@
-﻿using Microsoft.Maui;
+﻿using JumpRopeApp.Services;
+using Microsoft.Maui;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Storage;
 using System;
@@ -7,6 +8,7 @@ namespace JumpRopeApp;
 
 public partial class App : Application
 {
+    public static StepTrackerService StepTracker { get; } = new();
     public static int DailyStepCount { get; private set; } = 0;
     public static event Action<int, int>? OnDailyStepsUpdated;
 
@@ -54,10 +56,12 @@ public partial class App : Application
 
         if (lastSavedDate == todayDate)
         {
+            // Same day -> restore step count
             DailyStepCount = Preferences.Default.Get(StepCountKey, 0);
         }
         else
         {
+            // New day -> reset count and save today's date
             DailyStepCount = 0;
             Preferences.Default.Set(StepCountKey, 0);
             Preferences.Default.Set(StepDateKey, todayDate);
