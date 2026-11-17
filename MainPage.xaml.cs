@@ -5,6 +5,8 @@ using Microsoft.Maui.Dispatching;
 using Microsoft.Maui.Storage;
 using System;
 using System.Timers;
+using JumpRopeApp.Services;
+
 
 #if ANDROID
 using Android.App;
@@ -30,6 +32,7 @@ public partial class MainPage : ContentPage
     private int _restDuration = 15;
     private bool _isWorkingOut = false;
     private bool _isResting = false;
+    private readonly CloudService _cloudService = new();
 
     public MainPage()
     {
@@ -97,9 +100,11 @@ public partial class MainPage : ContentPage
         _motionDetector.OnJumpDetected += HandleJumpDetected;
 
         // 1. Load initial daily & accumulative steps
-        int dailySteps = Preferences.Default.Get("SavedDailySteps", 0);
+        // Verification: Daily movement label should pull the calculated daily difference
+        int displayDailySteps = Preferences.Get("SavedDailySteps", 0);
+        DailyStepsTextLabel.Text = displayDailySteps.ToString("N0"); // Updated to match your label x:Name
         int accumSteps = Preferences.Default.Get("SavedAccumulativeSteps", 0);
-        UpdateStepDisplay(dailySteps, accumSteps);
+        UpdateStepDisplay(displayDailySteps, accumSteps); // Fixed parameter name from dailySteps to displayDailySteps
 
         // 2. Subscribe to background step service updates
         App.OnDailyStepsUpdated += OnStepsUpdatedFromService;
@@ -301,6 +306,21 @@ public partial class MainPage : ContentPage
     private void OnPresetEnduranceClicked(object sender, EventArgs e)
     {
         JumpSecsEntry.Text = "60"; RestSecsEntry.Text = "30"; TotalSetsEntry.Text = "10"; RpmEntry.Text = "110";
+    }
+    public async Task SaveCompletedWorkoutAsync(WorkoutRecord record)
+    {
+        // 1. Save locally first (Offline-first architecture)
+        await _dbService.SaveWorkoutAsync(record);
+
+        // 2. Push to MongoDB Atlas Node API in the background
+        _ = Task.Run(async () =>
+        {
+            bool synced = await _cloudService.SyncWorkoutAsync(record);
+            if (synced)
+            {
+                System.Diagnostics.Debug.WriteLine("Synced workout to MongoDB Atlas successfully!");
+            }
+        });
     }
 
 }

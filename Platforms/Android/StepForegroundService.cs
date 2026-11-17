@@ -20,10 +20,7 @@ public class StepForegroundService : Service, ISensorEventListener
     private SensorManager? _sensorManager;
     private Sensor? _stepCounterSensor;
 
-    private int _rawInitialSensorSteps = -1;
-    private const string KeyInitialRawSteps = "InitialRawSteps";
     private const string KeySavedDate = "SavedStepDate";
-    private const string KeyLifetimeOffset = "LifetimeStepOffset";
 
     public override IBinder? OnBind(Intent? intent) => null;
 
@@ -39,11 +36,9 @@ public class StepForegroundService : Service, ISensorEventListener
         {
             Microsoft.Maui.Storage.Preferences.Default.Set(KeySavedDate, today);
             Microsoft.Maui.Storage.Preferences.Default.Set("SavedDailySteps", 0);
-            _rawInitialSensorSteps = -1;
-        }
-        else
-        {
-            _rawInitialSensorSteps = Microsoft.Maui.Storage.Preferences.Default.Get(KeyInitialRawSteps, -1);
+
+            // Invalidate baseline on a new day so it resets correctly
+            Microsoft.Maui.Storage.Preferences.Default.Set("StepBaseline", -1);
         }
 
         InitializeSensor();
@@ -61,41 +56,50 @@ public class StepForegroundService : Service, ISensorEventListener
         }
     }
 
+    // Correct Android Sensor Event Listener signature
     public void OnSensorChanged(SensorEvent? e)
     {
-        if (e?.Sensor?.Type == SensorType.StepCounter && e.Values != null && e.Values.Count > 0)
+        if (e == null || e.Values == null || e.Values.Count == 0) return;
+
+        int totalHardwareSteps = (int)e.Values[0];
+        string today = DateTime.Today.ToString("yyyy-MM-dd");
+        string lastSavedDate = Microsoft.Maui.Storage.Preferences.Default.Get("SavedStepDate", string.Empty);
+
+        int dailySteps = Microsoft.Maui.Storage.Preferences.Default.Get("SavedDailySteps", 0);
+        int lastHardware = Microsoft.Maui.Storage.Preferences.Default.Get("LastHardwareSteps", -1);
+
+        // 1. Handle day rollover (New Day)
+        if (lastSavedDate != today)
         {
-            int currentRawHardwareSteps = (int)e.Values[0];
-            string today = DateTime.Today.ToString("yyyy-MM-dd");
-            string savedDate = Microsoft.Maui.Storage.Preferences.Default.Get(KeySavedDate, string.Empty);
-
-            if (savedDate != today || _rawInitialSensorSteps == -1)
-            {
-                _rawInitialSensorSteps = currentRawHardwareSteps;
-                Microsoft.Maui.Storage.Preferences.Default.Set(KeySavedDate, today);
-                Microsoft.Maui.Storage.Preferences.Default.Set(KeyInitialRawSteps, _rawInitialSensorSteps);
-                Microsoft.Maui.Storage.Preferences.Default.Set("SavedDailySteps", 0);
-            }
-
-            int dailySteps = Math.Max(0, currentRawHardwareSteps - _rawInitialSensorSteps);
-
-            // Compute accumulative lifetime steps delta
-            int lastRaw = Microsoft.Maui.Storage.Preferences.Default.Get("LastRawSensorSteps", currentRawHardwareSteps);
-            int stepDelta = Math.Max(0, currentRawHardwareSteps - lastRaw);
-            if (currentRawHardwareSteps < lastRaw) stepDelta = currentRawHardwareSteps; // Device rebooted
-
-            Microsoft.Maui.Storage.Preferences.Default.Set("LastRawSensorSteps", currentRawHardwareSteps);
-
-            int savedAccumulative = Microsoft.Maui.Storage.Preferences.Default.Get("SavedAccumulativeSteps", 0);
-            int accumulativeSteps = savedAccumulative + stepDelta;
-
-            Microsoft.Maui.Storage.Preferences.Default.Set("SavedAccumulativeSteps", accumulativeSteps);
-            Microsoft.Maui.Storage.Preferences.Default.Set("SavedDailySteps", dailySteps);
-
-            App.NotifyStepUpdate(dailySteps, accumulativeSteps);
-
-            UpdateNotification($"Today: {dailySteps:N0} | Total: {accumulativeSteps:N0}");
+            Microsoft.Maui.Storage.Preferences.Default.Set("SavedStepDate", today);
+            dailySteps = 0;
+            lastHardware = totalHardwareSteps;
         }
+        // 2. Handle first run initialization
+        else if (lastHardware == -1)
+        {
+            lastHardware = totalHardwareSteps;
+        }
+        // 3. Handle Phone Reboot / Sensor Reset (Hardware counter dropped to 0 or lower)
+        else if (totalHardwareSteps < lastHardware)
+        {
+            // The phone restarted! The hardware counter reset, but our previous dailySteps 
+            // are already safely saved. We add the new steps walked since the reboot.
+            dailySteps += totalHardwareSteps;
+        }
+        // 4. Normal incremental movement
+        else
+        {
+            int diff = totalHardwareSteps - lastHardware;
+            dailySteps += diff;
+        }
+
+        // Persist everything securely
+        Microsoft.Maui.Storage.Preferences.Default.Set("SavedDailySteps", dailySteps);
+        Microsoft.Maui.Storage.Preferences.Default.Set("LastHardwareSteps", totalHardwareSteps);
+        Microsoft.Maui.Storage.Preferences.Default.Set("SavedAccumulativeSteps", totalHardwareSteps);
+
+        UpdateNotification($"Steps today: {dailySteps:N0}");
     }
 
     public void OnAccuracyChanged(Sensor? sensor, [GeneratedEnum] SensorStatus accuracy) { }
