@@ -8,34 +8,22 @@
     <ScrollView Padding="20">
         <VerticalStackLayout Spacing="20" MaximumWidthRequest="480">
 
-            <!-- 1. CREATE CUSTOM ROUTINE CARD -->
+            <!-- New Routine Form Card -->
             <Border BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1E293B}"
                     Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}"
                     StrokeShape="RoundRectangle 20" Padding="20">
-                <VerticalStackLayout Spacing="14">
-                    <Label Text="+ Create Custom Routine" FontSize="16" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="➕ Create Quick Routine" FontSize="16" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
 
-                    <!-- Routine Name -->
-                    <Border BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}" StrokeShape="RoundRectangle 12" Padding="12,2">
-                        <Entry x:Name="RoutineNameEntry" Placeholder="Routine Name (e.g., Morning Walk &amp; Jump)" PlaceholderColor="{AppThemeBinding Light=#94A3B8, Dark=#64748B}" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" FontSize="14" />
+                    <Border BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" StrokeShape="RoundRectangle 10" Padding="12,2">
+                        <Entry x:Name="RoutineNameEntry" Placeholder="Routine Name (e.g. Pyramid Burn)" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
                     </Border>
 
-                    <!-- Target Steps & Target Jumps Inputs -->
-                    <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
-                        <Border Grid.Column="0" BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}" StrokeShape="RoundRectangle 12" Padding="12,2">
-                            <Entry x:Name="TargetStepsEntry" Placeholder="Target Steps" Keyboard="Numeric" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" FontSize="14" />
-                        </Border>
-
-                        <Border Grid.Column="1" BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}" StrokeShape="RoundRectangle 12" Padding="12,2">
-                            <Entry x:Name="TargetJumpsEntry" Placeholder="Target Jumps" Keyboard="Numeric" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" FontSize="14" />
-                        </Border>
-                    </Grid>
-
-                    <Button Text="Save Custom Routine" Clicked="OnSaveRoutineClicked" BackgroundColor="#6366F1" TextColor="White" FontAttributes="Bold" CornerRadius="12" HeightRequest="44" />
+                    <Button Text="Save Preset Routine" Clicked="OnSaveRoutineClicked" BackgroundColor="#6366F1" TextColor="White" FontAttributes="Bold" CornerRadius="12" HeightRequest="44" />
                 </VerticalStackLayout>
             </Border>
 
-            <!-- 2. SAVED ROUTINES LIST -->
+            <!-- Saved Routines List -->
             <Border BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1E293B}"
                     Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}"
                     StrokeShape="RoundRectangle 20" Padding="20">
@@ -48,16 +36,11 @@
                                 <Border BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}"
                                         Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}"
                                         StrokeShape="RoundRectangle 12" Padding="14" Margin="0,0,0,10">
-                                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
-                                        <Label Grid.Row="0" Grid.Column="0" Text="{Binding Name}" FontAttributes="Bold" FontSize="15" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
-
-                                        <!-- Delete / Action Button -->
-                                        <Button Grid.Row="0" Grid.Column="1" Text="🗑️" BackgroundColor="Transparent" Clicked="OnDeleteRoutineClicked" CommandParameter="{Binding .}" HeightRequest="30" WidthRequest="30" />
-
-                                        <HorizontalStackLayout Grid.Row="1" Grid.ColumnSpan="2" Spacing="16" Margin="0,6,0,0">
-                                            <Label Text="{Binding TargetSteps, StringFormat='Steps Goal: {0:N0}'}" FontSize="12" TextColor="#10B981" />
-                                            <Label Text="{Binding TargetJumps, StringFormat='Jumps Goal: {0:N0}'}" FontSize="12" TextColor="#6366F1" />
-                                        </HorizontalStackLayout>
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <VerticalStackLayout Spacing="2">
+                                            <Label Text="{Binding Name}" FontAttributes="Bold" FontSize="14" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
+                                            <Label Text="{Binding Description}" FontSize="12" TextColor="{AppThemeBinding Light=#64748B, Dark=#94A3B8}" />
+                                        </VerticalStackLayout>
                                     </Grid>
                                 </Border>
                             </DataTemplate>
