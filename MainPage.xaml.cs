@@ -43,9 +43,12 @@ public partial class MainPage : ContentPage
     {
         base.OnAppearing();
 
-        // 1. Request Android runtime permissions safely while UI is active
+        bool canStartHealthService = true;
+
+#if ANDROID
         if (DeviceInfo.Platform == DevicePlatform.Android)
         {
+            // 1. Request Android runtime permissions safely while UI is active
             try
             {
                 var sensorStatus = await Permissions.CheckStatusAsync<Permissions.Sensors>();
@@ -54,9 +57,22 @@ public partial class MainPage : ContentPage
                     await Permissions.RequestAsync<Permissions.Sensors>();
                 }
 
-#if ANDROID
+                if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.Q)
+                {
+                    var activityStatus = await Permissions.CheckStatusAsync<ActivityRecognitionPermission>();
+                    if (activityStatus != PermissionStatus.Granted)
+                    {
+                        activityStatus = await Permissions.RequestAsync<ActivityRecognitionPermission>();
+                    }
+
+                    canStartHealthService = activityStatus == PermissionStatus.Granted;
+                    if (!canStartHealthService)
+                    {
+                        Logger.Log("ActivityRecognition permission not granted; skipping StepForegroundService start.");
+                    }
+                }
+
                 if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.Tiramisu)
-#endif
                 {
                     var notifStatus = await Permissions.CheckStatusAsync<Permissions.PostNotifications>();
                     if (notifStatus != PermissionStatus.Granted)
@@ -67,44 +83,43 @@ public partial class MainPage : ContentPage
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Permission error: {ex.Message}");
+                canStartHealthService = false;
+                Logger.Log("Permission error in OnAppearing", ex);
+            }
+
+            // 2. Safely start the Foreground Service using platform context
+            if (canStartHealthService)
+            {
+                try
+                {
+                    var context = Microsoft.Maui.ApplicationModel.Platform.CurrentActivity ?? Android.App.Application.Context;
+                    var intent = new Android.Content.Intent(context, typeof(Platforms.Android.StepForegroundService));
+
+                    if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.O)
+                    {
+                        context.StartForegroundService(intent);
+                    }
+                    else
+                    {
+                        context.StartService(intent);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.Log("Failed to start StepForegroundService", ex);
+                }
             }
         }
-
-        // 2. Safely start the Foreground Service using platform context
-        if (DeviceInfo.Platform == DevicePlatform.Android)
-        {
-            try
-            {
-#if ANDROID
-                var context = Microsoft.Maui.ApplicationModel.Platform.CurrentActivity ?? Android.App.Application.Context;
-                var intent = new Android.Content.Intent(context, typeof(Platforms.Android.StepForegroundService));
-
-                if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.O)
-                {
-                    context.StartForegroundService(intent);
-                }
-                else
-                {
-                    context.StartService(intent);
-                }
 #endif
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Failed to start service: {ex.Message}");
-            }
-        }
 
         UpdateTimerDisplay();
         _motionDetector.OnJumpDetected += HandleJumpDetected;
 
         // 1. Load initial daily & accumulative steps
-        // Verification: Daily movement label should pull the calculated daily difference
         int displayDailySteps = Preferences.Get("SavedDailySteps", 0);
-        DailyStepsTextLabel.Text = displayDailySteps.ToString("N0"); // Updated to match your label x:Name
+        DailyStepsTextLabel.Text = displayDailySteps.ToString("N0");
         int accumSteps = Preferences.Default.Get("SavedAccumulativeSteps", 0);
-        UpdateStepDisplay(displayDailySteps, accumSteps); // Fixed parameter name from dailySteps to displayDailySteps
+        UpdateStepDisplay(displayDailySteps, accumSteps);
 
         // 2. Subscribe to background step service updates
         App.OnDailyStepsUpdated += OnStepsUpdatedFromService;
@@ -323,4 +338,11 @@ public partial class MainPage : ContentPage
         });
     }
 
+    public class ActivityRecognitionPermission : Permissions.BasePlatformPermission
+    {
+#if ANDROID
+        public override (string androidPermission, bool isRuntime)[] RequiredPermissions =>
+            new[] { (global::Android.Manifest.Permission.ActivityRecognition, true) };
+#endif
+    }
 }
