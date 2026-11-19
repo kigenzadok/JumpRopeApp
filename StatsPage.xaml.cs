@@ -1,4 +1,5 @@
 using JumpRopeApp.Models;
+using Microsoft.Maui.ApplicationModel.DataTransfer;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Storage;
 using System;
@@ -14,6 +15,8 @@ public partial class StatsPage : ContentPage
     private readonly DatabaseService _dbService = new();
     private readonly JumpsChartDrawable _jumpsChartDrawable = new();
     private readonly StepsChartDrawable _stepsChartDrawable = new();
+
+    private UserProfile _profile = new();
     private bool _hasExistingProfile = false;
 
     public StatsPage()
@@ -39,40 +42,45 @@ public partial class StatsPage : ContentPage
         catch (Exception ex)
         {
             Logger.Log("CRASH DETECTED IN STATSPAGE OnAppearing", ex);
-            await DisplayAlertAsync("Crash Diagnostic Captured", $"{ex.Message}\n\nCheck logs via Lifetime Overview.", "OK");
+            await DisplayAlert("Crash Diagnostic Captured", $"{ex.Message}\n\nCheck logs via Lifetime Overview.", "OK");
         }
     }
 
-    private async Task LoadDataAsync()
+    // ==========================================
+    // 1. PROFILE & SETTINGS
+    // ==========================================
+
+    private async Task LoadProfileAsync()
     {
-        _profile = await _dbService.GetProfileAsync();
-        UpdateProfileUI();
-
-        // 1. Lifetime Stats
-        var (totalJumps, totalSets, totalWorkouts, totalCalories) = await _dbService.GetLifetimeStatsAsync();
-        AllTimeJumpsLabel.Text = totalJumps.ToString("N0");
-        TotalWorkoutsLabel.Text = totalWorkouts.ToString("N0");
-        TotalCaloriesLabel.Text = $"{totalCalories:N0} kcal";
-
-        int avgJumpsPerSet = totalSets > 0 ? totalJumps / totalSets : 0;
-        AvgJumpsLabel.Text = avgJumpsPerSet.ToString("N0");
-
-        // 2. Daily Goal Progress
-        var (todaySets, todayJumps) = await _dbService.GetDayStatsAsync(DateTime.Today);
-        int targetGoal = _profile.DailyTargetJumps > 0 ? _profile.DailyTargetJumps : 5000;
-        double goalProgress = Math.Min(1.0, (double)todayJumps / targetGoal);
-
-        GoalProgressTextLabel.Text = $"Today: {todayJumps:N0} / {targetGoal:N0} jumps";
-        GoalPercentLabel.Text = $"{(int)(goalProgress * 100)}%";
-        GoalProgressBar.Progress = goalProgress;
-
+        var savedProfile = await _dbService.GetProfileAsync();
+        if (savedProfile != null)
+        {
+            _profile = savedProfile;
+            _hasExistingProfile = true;
+            UpdateProfileUI();
             SwitchToViewMode();
         }
         else
         {
+            _profile = new UserProfile { DailyJumpGoal = 1000 };
             _hasExistingProfile = false;
+            UpdateProfileUI();
             SwitchToEditMode();
         }
+    }
+
+    private void UpdateProfileUI()
+    {
+        DisplayPageNameLabel.Text = string.IsNullOrWhiteSpace(_profile.Name) ? "Not set" : _profile.Name;
+        DisplayWeightLabel.Text = _profile.WeightKg > 0 ? $"{_profile.WeightKg} kg" : "-- kg";
+        DisplayHeightLabel.Text = _profile.HeightCm > 0 ? $"{_profile.HeightCm} cm" : "-- cm";
+        DisplayGoalLabel.Text = (_profile.DailyJumpGoal > 0 ? _profile.DailyJumpGoal : 1000).ToString("N0");
+
+        NameEntry.Text = _profile.Name;
+        WeightEntry.Text = _profile.WeightKg > 0 ? _profile.WeightKg.ToString() : string.Empty;
+        HeightEntry.Text = _profile.HeightCm > 0 ? _profile.HeightCm.ToString() : string.Empty;
+        GoalEntry.Text = (_profile.DailyJumpGoal > 0 ? _profile.DailyJumpGoal : 1000).ToString();
+        HapticsSwitch.IsToggled = _profile.EnableHaptics;
     }
 
     private void SwitchToViewMode()
@@ -96,7 +104,7 @@ public partial class StatsPage : ContentPage
     {
         var profile = await _dbService.GetProfileAsync() ?? new UserProfile();
 
-        profile.Name = NameEntry.Text ?? string.Empty;
+        profile.Name = NameEntry.Text?.Trim() ?? string.Empty;
         profile.WeightKg = double.TryParse(WeightEntry.Text, out var w) ? w : 0;
         profile.HeightCm = double.TryParse(HeightEntry.Text, out var h) ? h : 0;
         profile.DailyJumpGoal = int.TryParse(GoalEntry.Text, out var g) && g > 0 ? g : 1000;
@@ -105,12 +113,14 @@ public partial class StatsPage : ContentPage
         await _dbService.SaveOrUpdateProfileAsync(profile);
         await LoadProfileAsync();
         await LoadStatsAsync();
+        SwitchToViewMode();
     }
 
     public void OnCancelOrDeleteClicked(object? sender, EventArgs e)
     {
         if (_hasExistingProfile)
         {
+            UpdateProfileUI();
             SwitchToViewMode();
         }
         else
@@ -133,7 +143,7 @@ public partial class StatsPage : ContentPage
     }
 
     // ==========================================
-    // 2. ANALYTICS, PRs, PROGRESS & CHART
+    // 2. ANALYTICS, PRs, PROGRESS & CHARTS
     // ==========================================
 
     private async Task LoadStatsAsync()
@@ -147,16 +157,14 @@ public partial class StatsPage : ContentPage
         int avg = workouts > 0 ? jumps / workouts : 0;
         AvgJumpsLabel.Text = avg.ToString("N0");
 
-        // Calculate total lifetime steps from saved workouts + current accumulator
         var workoutsList = await _dbService.GetWorkoutsAsync();
         int totalStepsFromWorkouts = workoutsList != null ? workoutsList.Sum(w => w.DailySteps) : 0;
-        int currentAccumulativeSteps = Preferences.Get("SavedAccumulativeSteps", 0);
+        int currentAccumulativeSteps = Preferences.Default.Get("SavedAccumulativeSteps", 0);
         int totalLifetimeSteps = Math.Max(totalStepsFromWorkouts, currentAccumulativeSteps);
 
         LifetimeStepsLabel.Text = totalLifetimeSteps.ToString("N0");
 
-        // Today's Goal Progress
-        var (todaySets, todayJumps) = await _dbService.GetDayStatsAsync(DateTime.Now);
+        var (_, todayJumps) = await _dbService.GetDayStatsAsync(DateTime.Today);
         var profile = await _dbService.GetProfileAsync();
         int targetGoal = profile?.DailyJumpGoal > 0 ? profile.DailyJumpGoal : 1000;
 
@@ -165,15 +173,9 @@ public partial class StatsPage : ContentPage
         GoalPercentLabel.Text = $"{Math.Round(progress * 100)}%";
         GoalProgressTextLabel.Text = $"{todayJumps:N0} / {targetGoal:N0} Jumps Completed";
 
-        if (workoutsList != null && workoutsList.Any())
-        {
-            int mostSteps = workoutsList.Max(w => w.DailySteps);
-            MostStepsLabel.Text = mostSteps.ToString("N0");
-        }
-        else
-        {
-            MostStepsLabel.Text = "0";
-        }
+        MostStepsLabel.Text = (workoutsList != null && workoutsList.Any())
+            ? workoutsList.Max(w => w.DailySteps).ToString("N0")
+            : "0";
     }
 
     private async Task LoadPersonalRecordsAsync()
@@ -181,25 +183,19 @@ public partial class StatsPage : ContentPage
         var (maxJumps, maxSets, streak) = await _dbService.GetPersonalRecordsAsync();
         PrMostJumpsLabel.Text = maxJumps.ToString("N0");
         PrMostSetsLabel.Text = maxSets.ToString();
-        PrStreakLabel.Text = $"{streak} days";
+        PrStreakLabel.Text = $"{streak} d";
+    }
 
     private async Task LoadChartDataAsync()
     {
         try
         {
-            // 1. Safely fetch weekly jumps with null protection
             var weeklyJumps = await _dbService.GetWeeklyJumpTotalsAsync() ?? new();
 
-            if (weeklyJumps.Any())
-            {
-                _jumpsChartDrawable.Data = weeklyJumps.Select(d => (d.DayName, d.Jumps)).ToList();
-            }
-            else
-            {
-                _jumpsChartDrawable.Data = new();
-            }
+            _jumpsChartDrawable.Data = weeklyJumps.Any()
+                ? weeklyJumps.Select(d => (d.DayName, d.Jumps)).ToList()
+                : new();
 
-            // 2. Safely compute steps for the weekly chart without risking null/format crashes
             DateTime today = DateTime.Today;
             var stepDataList = new List<(string DayName, int Steps)>();
 
@@ -208,14 +204,12 @@ public partial class StatsPage : ContentPage
                 int steps = 0;
                 try
                 {
-                    // Check if it's today
                     if (item.DayName.Equals(today.ToString("ddd", System.Globalization.CultureInfo.InvariantCulture), StringComparison.OrdinalIgnoreCase))
                     {
-                        steps = Preferences.Get("SavedDailySteps", 0);
+                        steps = Preferences.Default.Get("SavedDailySteps", 0);
                     }
                     else
                     {
-                        // Look back through recent days safely
                         for (int i = 1; i <= 7; i++)
                         {
                             DateTime pastDate = today.AddDays(-i);
@@ -223,7 +217,7 @@ public partial class StatsPage : ContentPage
                                 .Equals(item.DayName, StringComparison.OrdinalIgnoreCase))
                             {
                                 string dateKey = $"Steps_{pastDate:yyyy-MM-dd}";
-                                steps = Preferences.Get(dateKey, 0);
+                                steps = Preferences.Default.Get(dateKey, 0);
                                 break;
                             }
                         }
@@ -231,7 +225,7 @@ public partial class StatsPage : ContentPage
                 }
                 catch
                 {
-                    steps = 0; // Fallback safeguard per item
+                    steps = 0;
                 }
 
                 stepDataList.Add((item.DayName, steps));
@@ -239,7 +233,6 @@ public partial class StatsPage : ContentPage
 
             _stepsChartDrawable.Data = stepDataList;
 
-            // 3. Invalidate UI safely on main thread
             MainThread.BeginInvokeOnMainThread(() =>
             {
                 JumpsChartGraphicsView?.Invalidate();
@@ -248,7 +241,7 @@ public partial class StatsPage : ContentPage
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Error loading chart data: {ex.Message}");
+            Logger.Log("Error loading chart data on StatsPage", ex);
         }
     }
 
@@ -284,7 +277,6 @@ public partial class StatsPage : ContentPage
                 var item = Data[i];
                 float x = spacing + i * (barWidth + spacing);
 
-                // Scaled for a 2k maximum limit
                 float barHeight = usableHeight * Math.Clamp((float)item.Jumps / 2000f, 0.04f, 1.0f);
                 float y = usableHeight - barHeight;
 
@@ -302,114 +294,4 @@ public partial class StatsPage : ContentPage
     {
         public List<(string DayName, int Steps)> Data { get; set; } = new();
 
-        public void Draw(ICanvas canvas, RectF dirtyRect)
-        {
-            canvas.FillColor = Colors.Transparent;
-            canvas.FillRectangle(dirtyRect);
-            if (Data == null || !Data.Any()) return;
-
-            float width = dirtyRect.Width;
-            float height = dirtyRect.Height;
-            int count = Data.Count;
-            float spacing = 8;
-            float barWidth = Math.Max(6, (width - (spacing * (count + 1))) / count);
-            float usableHeight = height - 25;
-
-            canvas.StrokeColor = Color.FromRgba(150, 150, 150, 25);
-            canvas.StrokeSize = 1;
-            canvas.DrawLine(0, 5, width, 5);
-            canvas.DrawLine(0, usableHeight / 2, width, usableHeight / 2);
-            canvas.DrawLine(0, usableHeight, width, usableHeight);
-
-            for (int i = 0; i < count; i++)
-            {
-                var item = Data[i];
-                float x = spacing + i * (barWidth + spacing);
-                float barHeight = usableHeight * Math.Clamp((float)item.Steps / 10000f, 0.04f, 1.0f);
-                float y = usableHeight - barHeight;
-
-                canvas.FillColor = Color.FromArgb("#10B981");
-                canvas.FillRoundedRectangle(x, y, barWidth, barHeight, barWidth / 2);
-
-                canvas.FontColor = Color.FromArgb("#94A3B8");
-                canvas.FontSize = 9;
-                canvas.DrawString(item.DayName, x - 4, height - 18, barWidth + 8, 15, HorizontalAlignment.Center, VerticalAlignment.Center);
-            }
-        }
-    }
-
-    // ==========================================
-    // 4. CSV EXPORT & RESET
-    // ==========================================
-
-    public async void OnExportCsvClicked(object? sender, EventArgs e)
-    {
-        DisplayPageNameLabel.Text = string.IsNullOrWhiteSpace(_profile.Name) ? "👤 User Profile" : $"👤 {_profile.Name}";
-        DisplayWeightLabel.Text = $"Weight: {_profile.WeightKg} kg";
-        DisplayHeightLabel.Text = $"Height: {_profile.HeightCm} cm";
-        DisplayGoalLabel.Text = $"Daily Goal: {_profile.DailyTargetJumps:N0} jumps";
-
-        NameEntry.Text = _profile.Name;
-        WeightEntry.Text = _profile.WeightKg.ToString();
-        HeightEntry.Text = _profile.HeightCm.ToString();
-        GoalEntry.Text = _profile.DailyTargetJumps.ToString();
-        HapticsSwitch.IsToggled = _profile.EnableHaptics;
-    }
-
-    private async void OnEditProfileClicked(object sender, EventArgs e)
-    {
-        if (_isEditingProfile)
-        {
-            // Save Profile Action
-            _profile.Name = NameEntry.Text;
-            _profile.WeightKg = double.TryParse(WeightEntry.Text, out var w) ? w : 70;
-            _profile.HeightCm = double.TryParse(HeightEntry.Text, out var h) ? h : 175;
-            _profile.DailyTargetJumps = int.TryParse(GoalEntry.Text, out var g) ? g : 5000;
-            _profile.EnableHaptics = HapticsSwitch.IsToggled;
-
-            await _dbService.SaveOrUpdateProfileAsync(_profile);
-            _isEditingProfile = false;
-            ToggleEditMode(false);
-            await LoadDataAsync();
-        }
-        else
-        {
-            await DisplayAlertAsync("Error", "No workout data available to export.", "OK");
-        }
-    }
-
-    private void OnCancelProfileClicked(object sender, EventArgs e)
-    {
-        bool confirm = await DisplayAlertAsync("Reset Stats", "Are you sure you want to reset all lifetime stats?", "Yes", "No");
-        if (confirm)
-        {
-            string csvPath = await _dbService.ExportWorkoutsToCsvAsync();
-            await Share.Default.RequestAsync(new ShareFileRequest
-            {
-                Title = "Export Workout History",
-                File = new ShareFile(csvPath)
-            });
-        }
-        catch (Exception ex)
-        {
-            // Line 131 fix
-            await DisplayAlertAsync("Export Error", ex.Message, "OK");
-        }
-    }
-    public async void OnViewLogsClicked(object? sender, EventArgs e)
-    {
-        string logs = Logger.GetLogContent();
-
-        // Display recent diagnostic output
-        bool share = await DisplayAlertAsync("Diagnostic Logs", logs.Length > 1500 ? logs[..1500] + "..." : logs, "Share Log", "Close");
-
-        if (share && File.Exists(Logger.LogFilePath))
-        {
-            await Share.Default.RequestAsync(new ShareFileRequest
-            {
-                Title = "App Diagnostics Log",
-                File = new ShareFile(Logger.LogFilePath)
-            });
-        }
-    }
-}
+        public void Draw(ICanvas canvas,

@@ -140,14 +140,14 @@ public partial class MainPage : ContentPage
 
     private void UpdateStepDisplay(int dailySteps, int accumulativeSteps)
     {
-        DailyStepsTextLabel.Text = dailySteps.ToString("N0");
+        string formattedSteps = dailySteps.ToString("N0");
+        DailyStepsTextLabel.Text = formattedSteps;
+        DailyStepsCardLabel.Text = formattedSteps;
         AccumulativeStepsLabel.Text = accumulativeSteps.ToString("N0");
 
-        // Calculate estimated distance (~0.00076 km per step)
         double distanceKm = Math.Round(dailySteps * 0.00076, 2);
         DailyDistanceLabel.Text = $"{distanceKm:N2} km";
 
-        // Progress toward 10,000 daily step goal
         double progress = Math.Min(1.0, (double)dailySteps / 10000.0);
         StepProgressBar.Progress = progress;
         DailyGoalProgressLabel.Text = $"{Math.Round(progress * 100)}%";

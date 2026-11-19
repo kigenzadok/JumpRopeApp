@@ -28,7 +28,7 @@
     <ScrollView Padding="20">
         <VerticalStackLayout Spacing="20" MaximumWidthRequest="480">
 
-            <!-- 1. USER PROFILE CARD -->
+            <!-- 1. DAILY GOAL PROGRESS CARD -->
             <Border BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1E293B}"
                     Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}"
                     StrokeThickness="1"
@@ -36,6 +36,12 @@
                 <Border.Shadow>
                     <Shadow Brush="#000000" Offset="0,4" Radius="12" Opacity="0.1" />
                 </Border.Shadow>
+
+                <VerticalStackLayout Spacing="10">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="Daily Jump Goal" FontSize="16" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
+                        <Label x:Name="GoalPercentLabel" Grid.Column="1" Text="0%" FontSize="14" FontAttributes="Bold" TextColor="#6366F1" />
+                    </Grid>
 
                     <ProgressBar x:Name="GoalProgressBar" Progress="0.0" ProgressColor="#6366F1" HeightRequest="10" />
 
@@ -165,10 +171,13 @@
 
                         <Grid ColumnDefinitions="Auto,*" VerticalOptions="Center" Margin="0,4,0,0">
                             <Label Text="Audio &amp; Haptic Cues" FontSize="13" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" VerticalOptions="Center" />
-                            <Switch x:Name="HapticsSwitch" Grid.Column="1" IsToggled="True" HorizontalOptions="End" />
+                            <Switch x:Name="HapticsSwitch" Grid.Column="1" IsToggled="True" Toggled="OnSettingsToggled" HorizontalOptions="End" />
                         </Grid>
 
-                        <Button x:Name="CancelOrDeleteButton" Text="Cancel" Clicked="OnCancelProfileClicked" BackgroundColor="{AppThemeBinding Light=#F1F5F9, Dark=#0F172A}" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" HeightRequest="40" CornerRadius="10" Margin="0,6,0,0" />
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="10" Margin="0,6,0,0">
+                            <Button Text="Save" Clicked="OnSaveProfileClicked" BackgroundColor="#6366F1" TextColor="White" FontAttributes="Bold" HeightRequest="40" CornerRadius="10" />
+                            <Button x:Name="CancelOrDeleteButton" Grid.Column="1" Text="Cancel" Clicked="OnCancelOrDeleteClicked" BackgroundColor="{AppThemeBinding Light=#F1F5F9, Dark=#0F172A}" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" HeightRequest="40" CornerRadius="10" />
+                        </Grid>
                     </VerticalStackLayout>
                 </VerticalStackLayout>
             </Border>
