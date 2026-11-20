@@ -38,6 +38,10 @@ public partial class RoutinesPage : ContentPage
             return;
         }
 
+        string name = RoutineNameEntry.Text.Trim();
+        int steps = int.TryParse(TargetStepsEntry?.Text, out var parsedSteps) && parsedSteps > 0 ? parsedSteps : 0;
+        int jumps = int.TryParse(TargetJumpsEntry?.Text, out var parsedJumps) && parsedJumps > 0 ? parsedJumps : 0;
+
         _routines.Add(new RoutineModel
         {
             Name = name,
@@ -51,7 +55,7 @@ public partial class RoutinesPage : ContentPage
         TargetJumpsEntry.Text = string.Empty;
 
         LoadRoutines();
-        await DisplayAlert("Success", "Custom routine saved successfully!", "OK");
+        await DisplayAlertAsync("Success", "Custom routine saved successfully!", "OK");
     }
 
     private void OnDeleteRoutineClicked(object sender, EventArgs e)

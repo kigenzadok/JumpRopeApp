@@ -38,11 +38,11 @@
 
                         <!-- Metrics Grid -->
                         <Grid ColumnDefinitions="*,*,*" ColumnSpacing="10">
-                            <!-- Total Steps -->
+                            <!-- Step Calories -->
                             <Border BackgroundColor="{AppThemeBinding Light=#F1F5F9, Dark=#0F172A}" StrokeShape="RoundRectangle 16" Padding="12">
                                 <VerticalStackLayout Spacing="2">
-                                    <Label Text="STEPS" FontSize="9" FontAttributes="Bold" TextColor="#10B981" HorizontalOptions="Center" />
-                                    <Label x:Name="DailyStepsCardLabel" Text="0" FontSize="18" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" HorizontalOptions="Center" />
+                                    <Label Text="STEP KCAL" FontSize="9" FontAttributes="Bold" TextColor="#10B981" HorizontalOptions="Center" />
+                                    <Label x:Name="DailyStepCaloriesLabel" Text="0 kcal" FontSize="18" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" HorizontalOptions="Center" />
                                 </VerticalStackLayout>
                             </Border>
 

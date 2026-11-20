@@ -15,9 +15,19 @@
                 <VerticalStackLayout Spacing="12">
                     <Label Text="➕ Create Quick Routine" FontSize="16" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
 
-                    <Border BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" StrokeShape="RoundRectangle 10" Padding="12,2">
+                    <Border BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}" StrokeShape="RoundRectangle 10" Padding="12,2">
                         <Entry x:Name="RoutineNameEntry" Placeholder="Routine Name (e.g. Pyramid Burn)" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
                     </Border>
+
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                        <Border Grid.Column="0" BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}" StrokeShape="RoundRectangle 10" Padding="12,2">
+                            <Entry x:Name="TargetStepsEntry" Placeholder="Target Steps" Keyboard="Numeric" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
+                        </Border>
+
+                        <Border Grid.Column="1" BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}" StrokeShape="RoundRectangle 10" Padding="12,2">
+                            <Entry x:Name="TargetJumpsEntry" Placeholder="Target Jumps" Keyboard="Numeric" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
+                        </Border>
+                    </Grid>
 
                     <Button Text="Save Preset Routine" Clicked="OnSaveRoutineClicked" BackgroundColor="#6366F1" TextColor="White" FontAttributes="Bold" CornerRadius="12" HeightRequest="44" />
                 </VerticalStackLayout>
@@ -36,10 +46,13 @@
                                 <Border BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}"
                                         Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}"
                                         StrokeShape="RoundRectangle 12" Padding="14" Margin="0,0,0,10">
-                                    <Grid ColumnDefinitions="*,Auto">
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
                                         <VerticalStackLayout Spacing="2">
                                             <Label Text="{Binding Name}" FontAttributes="Bold" FontSize="14" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
-                                            <Label Text="{Binding Description}" FontSize="12" TextColor="{AppThemeBinding Light=#64748B, Dark=#94A3B8}" />
+                                            <HorizontalStackLayout Spacing="12">
+                                                <Label Text="{Binding TargetSteps, StringFormat='Steps: {0:N0}'}" FontSize="12" TextColor="{AppThemeBinding Light=#64748B, Dark=#94A3B8}" />
+                                                <Label Text="{Binding TargetJumps, StringFormat='Jumps: {0:N0}'}" FontSize="12" TextColor="{AppThemeBinding Light=#64748B, Dark=#94A3B8}" />
+                                            </HorizontalStackLayout>
                                         </VerticalStackLayout>
                                     </Grid>
                                 </Border>

@@ -288,10 +288,46 @@ public partial class StatsPage : ContentPage
                 canvas.DrawString(item.DayName, x - 4, height - 18, barWidth + 8, 15, HorizontalAlignment.Center, VerticalAlignment.Center);
             }
         }
+
     }
+        public class StepsChartDrawable : IDrawable
+        {
+            public List<(string DayName, int Steps)> Data { get; set; } = new();
 
-    public class StepsChartDrawable : IDrawable
-    {
-        public List<(string DayName, int Steps)> Data { get; set; } = new();
+            public void Draw(ICanvas canvas, RectF dirtyRect)
+            {
+                canvas.FillColor = Colors.Transparent;
+                canvas.FillRectangle(dirtyRect);
+                if (Data == null || !Data.Any()) return;
 
-        public void Draw(ICanvas canvas,
+                float width = dirtyRect.Width;
+                float height = dirtyRect.Height;
+                int count = Data.Count;
+                float spacing = 8;
+                float barWidth = Math.Max(6, (width - (spacing * (count + 1))) / count);
+                float usableHeight = height - 25;
+
+                canvas.StrokeColor = Color.FromRgba(150, 150, 150, 25);
+                canvas.StrokeSize = 1;
+                canvas.DrawLine(0, 5, width, 5);
+                canvas.DrawLine(0, usableHeight / 2, width, usableHeight / 2);
+                canvas.DrawLine(0, usableHeight, width, usableHeight);
+
+                for (int i = 0; i < count; i++)
+                {
+                    var item = Data[i];
+                    float x = spacing + i * (barWidth + spacing);
+                    float barHeight = usableHeight * Math.Clamp((float)item.Steps / 10000f, 0.04f, 1.0f);
+                    float y = usableHeight - barHeight;
+
+                    canvas.FillColor = Color.FromArgb("#10B981");
+                    canvas.FillRoundedRectangle(x, y, barWidth, barHeight, barWidth / 2);
+
+                    canvas.FontColor = Color.FromArgb("#94A3B8");
+                    canvas.FontSize = 9;
+                    canvas.DrawString(item.DayName, x - 4, height - 18, barWidth + 8, 15, HorizontalAlignment.Center, VerticalAlignment.Center);
+                }
+            }
+        }
+    
+}

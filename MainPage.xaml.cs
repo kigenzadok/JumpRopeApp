@@ -1,12 +1,12 @@
 ﻿using JumpRopeApp.Models;
+using JumpRopeApp.Services;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Devices;
 using Microsoft.Maui.Dispatching;
+using Microsoft.Maui.Graphics;
 using Microsoft.Maui.Storage;
 using System;
-using System.Timers;
-using JumpRopeApp.Services;
-
+using System.Threading.Tasks;
 
 #if ANDROID
 using Android.App;
@@ -21,11 +21,11 @@ public partial class MainPage : ContentPage
     private readonly DatabaseService _dbService = new();
     private readonly TimerRingDrawable _ringDrawable = new();
     private readonly MotionDetectorService _motionDetector = new();
+    private readonly CloudService _cloudService = new();
 
     private IDispatcherTimer? _timer;
     private bool _isRunning = false;
     private bool _isResting = false;
-    private readonly CloudService _cloudService = new();
 
     private int _jumpSecs = 30;
     private int _restSecs = 15;
@@ -47,9 +47,11 @@ public partial class MainPage : ContentPage
     {
         base.OnAppearing();
 
-        // 1. Request Android runtime permissions safely while UI is active
+#if ANDROID
         if (DeviceInfo.Platform == DevicePlatform.Android)
         {
+            bool canStartHealthService = true;
+
             try
             {
                 var sensorStatus = await Permissions.CheckStatusAsync<Permissions.Sensors>();
@@ -58,9 +60,22 @@ public partial class MainPage : ContentPage
                     await Permissions.RequestAsync<Permissions.Sensors>();
                 }
 
-#if ANDROID
+                if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.Q)
+                {
+                    var activityStatus = await Permissions.CheckStatusAsync<ActivityRecognitionPermission>();
+                    if (activityStatus != PermissionStatus.Granted)
+                    {
+                        activityStatus = await Permissions.RequestAsync<ActivityRecognitionPermission>();
+                    }
+
+                    canStartHealthService = activityStatus == PermissionStatus.Granted;
+                    if (!canStartHealthService)
+                    {
+                        Logger.Log("ActivityRecognition permission not granted; skipping StepForegroundService start.");
+                    }
+                }
+
                 if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.Tiramisu)
-#endif
                 {
                     var notifStatus = await Permissions.CheckStatusAsync<Permissions.PostNotifications>();
                     if (notifStatus != PermissionStatus.Granted)
@@ -71,61 +86,49 @@ public partial class MainPage : ContentPage
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Permission error: {ex.Message}");
+                canStartHealthService = false;
+                Logger.Log("Permission error in OnAppearing", ex);
+            }
+
+            if (canStartHealthService)
+            {
+                try
+                {
+                    var context = Microsoft.Maui.ApplicationModel.Platform.CurrentActivity ?? Android.App.Application.Context;
+                    var intent = new Android.Content.Intent(context, typeof(Platforms.Android.StepForegroundService));
+
+                    if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.O)
+                    {
+                        context.StartForegroundService(intent);
+                    }
+                    else
+                    {
+                        context.StartService(intent);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.Log("Failed to start StepForegroundService", ex);
+                }
             }
         }
-
-        // 2. Safely start the Foreground Service using platform context
-        if (DeviceInfo.Platform == DevicePlatform.Android)
-        {
-            try
-            {
-#if ANDROID
-                var context = Microsoft.Maui.ApplicationModel.Platform.CurrentActivity ?? Android.App.Application.Context;
-                var intent = new Android.Content.Intent(context, typeof(Platforms.Android.StepForegroundService));
-
-                if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.O)
-                {
-                    context.StartForegroundService(intent);
-                }
-                else
-                {
-                    context.StartService(intent);
-                }
 #endif
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Failed to start service: {ex.Message}");
-            }
-        }
 
         UpdateTimerDisplay();
 
-        // 1. Display baseline daily steps immediately (Updated label reference)
-        DailyStepsTextLabel.Text = App.DailyStepCount.ToString("N0");
-
-        // 2. Subscribe to continuous background step updates
-        App.OnDailyStepsUpdated += HandleStepsUpdated;
-
-        // 3. Subscribe to real-time motion jump events
         _motionDetector.OnJumpDetected += HandleJumpDetected;
 
-        // 1. Load initial daily & accumulative steps
-        // Verification: Daily movement label should pull the calculated daily difference
-        int displayDailySteps = Preferences.Get("SavedDailySteps", 0);
-        DailyStepsTextLabel.Text = displayDailySteps.ToString("N0"); // Updated to match your label x:Name
+        int displayDailySteps = Preferences.Default.Get("SavedDailySteps", 0);
         int accumSteps = Preferences.Default.Get("SavedAccumulativeSteps", 0);
-        UpdateStepDisplay(displayDailySteps, accumSteps); // Fixed parameter name from dailySteps to displayDailySteps
+        UpdateStepDisplay(displayDailySteps, accumSteps);
 
-        // 2. Subscribe to background step service updates
         App.OnDailyStepsUpdated += OnStepsUpdatedFromService;
     }
 
     protected override void OnDisappearing()
     {
         base.OnDisappearing();
-        App.OnDailyStepsUpdated -= HandleStepsUpdated;
+        App.OnDailyStepsUpdated -= OnStepsUpdatedFromService;
         _motionDetector.OnJumpDetected -= HandleJumpDetected;
         _motionDetector.StopTracking();
     }
@@ -140,10 +143,11 @@ public partial class MainPage : ContentPage
 
     private void UpdateStepDisplay(int dailySteps, int accumulativeSteps)
     {
-        string formattedSteps = dailySteps.ToString("N0");
-        DailyStepsTextLabel.Text = formattedSteps;
-        DailyStepsCardLabel.Text = formattedSteps;
+        DailyStepsTextLabel.Text = dailySteps.ToString("N0");
         AccumulativeStepsLabel.Text = accumulativeSteps.ToString("N0");
+
+        double stepCalories = Math.Round(dailySteps * 0.04, 0);
+        DailyStepCaloriesLabel.Text = $"{stepCalories:N0} kcal";
 
         double distanceKm = Math.Round(dailySteps * 0.00076, 2);
         DailyDistanceLabel.Text = $"{distanceKm:N2} km";
@@ -157,8 +161,11 @@ public partial class MainPage : ContentPage
     {
         if (_isRunning && !_isResting)
         {
-            _jumpCount++;
-            LiveJumpsLabel.Text = _jumpCount.ToString("N0");
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                _jumpCount++;
+                LiveJumpsLabel.Text = _jumpCount.ToString("N0");
+            });
         }
     }
 
@@ -190,7 +197,12 @@ public partial class MainPage : ContentPage
         }
         else
         {
-            StopWorkout();
+            if (!_isResting && _totalWorkoutSeconds == 0 && _secondsRemaining == _jumpSecs)
+            {
+                ParseInputs();
+                _secondsRemaining = _jumpSecs;
+            }
+            StartTimer();
         }
     }
 
@@ -246,59 +258,48 @@ public partial class MainPage : ContentPage
         StartStopButton.BackgroundColor = Color.FromArgb("#6366F1");
 
         LiveJumpsLabel.Text = "0";
+        LiveCaloriesLabel.Text = "0 kcal";
         UpdateTimerDisplay();
     }
 
     private void Timer_Tick(object? sender, EventArgs e)
     {
-        _secondsRemaining--;
-        _totalWorkoutSeconds++;
-
-        if (_secondsRemaining is > 0 and <= 3)
+        if (_secondsRemaining > 0)
         {
-            SpeakText(_secondsRemaining.ToString());
-            TriggerHaptic();
+            _secondsRemaining--;
+            if (!_isResting)
+            {
+                _totalWorkoutSeconds++;
+            }
+
+            if (_secondsRemaining is > 0 and <= 3)
+            {
+                SpeakText(_secondsRemaining.ToString());
+                TriggerHaptic();
+            }
         }
 
         if (_secondsRemaining <= 0)
         {
-            if (!_isResting)
+            if (!_isResting && _restSecs > 0)
             {
-                if (_currentSet >= _totalSets)
-                {
-                    FinishWorkout();
-                    return;
-                }
-
                 _isResting = true;
                 _secondsRemaining = _restSecs;
                 SpeakText("Rest!");
                 TriggerHaptic();
             }
+            else if (_currentSet < _totalSets)
+            {
+                _currentSet++;
+                _isResting = false;
+                _secondsRemaining = _jumpSecs;
+                SpeakText("Jump!");
+                TriggerHaptic();
+            }
             else
             {
-                if (!_isResting && _restDuration > 0)
-                {
-                    _isResting = true;
-                    _remainingSeconds = _restDuration;
-                    StatusBadge.BackgroundColor = Color.FromArgb("#F59E0B");
-                    StatusTextLabel.Text = "RESTING";
-                }
-                else
-                {
-                    if (_currentSet < _totalSets)
-                    {
-                        _currentSet++;
-                        _isResting = false;
-                        _remainingSeconds = _jumpDuration;
-                        StatusBadge.BackgroundColor = Color.FromArgb("#10B981");
-                        StatusTextLabel.Text = "JUMPING";
-                    }
-                    else
-                    {
-                        CompleteWorkout();
-                    }
-                }
+                FinishWorkout();
+                return;
             }
         }
 
@@ -308,7 +309,7 @@ public partial class MainPage : ContentPage
     private void UpdateTimerDisplay()
     {
         int totalMaxSeconds = _isResting ? _restSecs : _jumpSecs;
-        double progress = totalMaxSeconds > 0 ? (double)_secondsRemaining / totalMaxSeconds : 0;
+        double progress = totalMaxSeconds > 0 ? Math.Clamp((double)_secondsRemaining / totalMaxSeconds, 0.0, 1.0) : 0;
 
         _ringDrawable.Progress = progress;
         _ringDrawable.IsRestMode = _isResting;
@@ -332,7 +333,7 @@ public partial class MainPage : ContentPage
 
         LiveJumpsLabel.Text = _jumpCount.ToString("N0");
 
-        double estCalories = Math.Round((10.0 * 70.0 * (_totalWorkoutSeconds / 3600.0)), 1);
+        double estCalories = Math.Round(10.0 * 70.0 * (_totalWorkoutSeconds / 3600.0), 1);
         LiveCaloriesLabel.Text = $"{estCalories:N0} kcal";
     }
 
@@ -353,31 +354,24 @@ public partial class MainPage : ContentPage
 
         int mins = _totalWorkoutSeconds / 60;
         int secs = _totalWorkoutSeconds % 60;
-
-        SummaryJumpsLabel.Text = _jumpCount.ToString("N0");
-        SummarySetsLabel.Text = _totalSets.ToString();
-        SummaryDurationLabel.Text = $"{mins}m {secs}s";
-
-        double estCalories = Math.Round((10.0 * 70.0 * (_totalWorkoutSeconds / 3600.0)), 1);
-        SummaryCaloriesLabel.Text = $"{estCalories:N0} kcal";
+        double estCalories = Math.Round(10.0 * 70.0 * (_totalWorkoutSeconds / 3600.0), 1);
 
         var record = new WorkoutRecord
         {
             Date = DateTime.Now,
-            TotalJumps = _totalJumpsInWorkout,
-            DurationSeconds = _totalDurationSeconds,
-            CaloriesBurned = _totalCaloriesBurned,
+            TotalJumps = _jumpCount,
+            DurationSeconds = _totalWorkoutSeconds,
+            CaloriesBurned = estCalories,
             DailySteps = Preferences.Default.Get("SavedDailySteps", 0),
             SetsCompleted = _totalSets
         };
 
-        await _dbService.SaveWorkoutAsync(record);
+        await SaveCompletedWorkoutAsync(record);
 
-        // Show Summary Modal
-        SummaryJumpsLabel.Text = _totalJumpsInWorkout.ToString("N0");
+        SummaryJumpsLabel.Text = _jumpCount.ToString("N0");
         SummarySetsLabel.Text = _totalSets.ToString();
-        SummaryDurationLabel.Text = $"{_totalDurationSeconds / 60}m {_totalDurationSeconds % 60}s";
-        SummaryCaloriesLabel.Text = $"{_totalCaloriesBurned} kcal";
+        SummaryDurationLabel.Text = $"{mins}m {secs}s";
+        SummaryCaloriesLabel.Text = $"{estCalories:N0} kcal";
         SummaryModalOverlay.IsVisible = true;
     }
 
@@ -387,37 +381,10 @@ public partial class MainPage : ContentPage
         OnResetClicked(null, EventArgs.Empty);
     }
 
-    private void OnResetClicked(object sender, EventArgs e)
-    {
-        StopWorkout();
-        _remainingSeconds = 30;
-        _currentSet = 1;
-        _totalJumpsInWorkout = 0;
-        LiveJumpsLabel.Text = "0";
-        LiveCaloriesLabel.Text = "0 kcal";
-        UpdateTimerDisplay();
-    }
-
-    private void OnPresetBeginnerClicked(object sender, EventArgs e)
-    {
-        JumpSecsEntry.Text = "30"; RestSecsEntry.Text = "15"; TotalSetsEntry.Text = "6"; RpmEntry.Text = "100";
-    }
-
-    private void OnPresetHiitClicked(object sender, EventArgs e)
-    {
-        JumpSecsEntry.Text = "45"; RestSecsEntry.Text = "15"; TotalSetsEntry.Text = "8"; RpmEntry.Text = "130";
-    }
-
-    private void OnPresetEnduranceClicked(object sender, EventArgs e)
-    {
-        JumpSecsEntry.Text = "60"; RestSecsEntry.Text = "30"; TotalSetsEntry.Text = "10"; RpmEntry.Text = "110";
-    }
     public async Task SaveCompletedWorkoutAsync(WorkoutRecord record)
     {
-        // 1. Save locally first (Offline-first architecture)
         await _dbService.SaveWorkoutAsync(record);
 
-        // 2. Push to MongoDB Atlas Node API in the background
         _ = Task.Run(async () =>
         {
             bool synced = await _cloudService.SyncWorkoutAsync(record);
@@ -427,5 +394,15 @@ public partial class MainPage : ContentPage
             }
         });
     }
+
+
+public class ActivityRecognitionPermission : Permissions.BasePlatformPermission
+{
+#if ANDROID
+    public override (string androidPermission, bool isRuntime)[] RequiredPermissions =>
+        new[] { (global::Android.Manifest.Permission.ActivityRecognition, true) };
+#endif
+}
+
 
 }
