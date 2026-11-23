@@ -12,7 +12,6 @@ namespace JumpRopeApp.Platforms.Android;
     Enabled = true,
     Exported = false,
     ForegroundServiceType = global::Android.Content.PM.ForegroundService.TypeHealth)]
-
 public class StepForegroundService : Service, ISensorEventListener
 {
     public const int NotificationId = 1001;
@@ -21,30 +20,36 @@ public class StepForegroundService : Service, ISensorEventListener
     private SensorManager? _sensorManager;
     private Sensor? _stepCounterSensor;
 
-    private const string KeySavedDate = "SavedStepDate";
-
     public override IBinder? OnBind(Intent? intent) => null;
-    string todayKey = $"Steps_{DateTime.Today:yyyy-MM-dd}";
- 
-    public override StartCommandResult OnStartCommand(Intent? intent, StartCommandFlags flags, int startId)
+
+    [return: GeneratedEnum]
+    public override StartCommandResult OnStartCommand(Intent? intent, [GeneratedEnum] StartCommandFlags flags, int startId)
     {
-        CreateNotificationChannel();
-        StartForeground(NotificationId, BuildNotification("Tracking steps..."));
-
-        string today = DateTime.Today.ToString("yyyy-MM-dd");
-        string lastSavedDate = Microsoft.Maui.Storage.Preferences.Default.Get(KeySavedDate, string.Empty);
-
-        if (lastSavedDate != today)
+        try
         {
-            Microsoft.Maui.Storage.Preferences.Default.Set(KeySavedDate, today);
-            Microsoft.Maui.Storage.Preferences.Default.Set("SavedDailySteps", 0);
+            int currentDailySteps = Microsoft.Maui.Storage.Preferences.Default.Get("SavedDailySteps", 0);
 
-            // Invalidate baseline on a new day so it resets correctly
-            Microsoft.Maui.Storage.Preferences.Default.Set("StepBaseline", -1);
+            CreateNotificationChannel();
+            var notification = BuildNotification($"Steps today: {currentDailySteps:N0}");
+
+            if (Build.VERSION.SdkInt >= BuildVersionCodes.UpsideDownCake) // API 34+
+            {
+                StartForeground(NotificationId, notification, global::Android.Content.PM.ForegroundService.TypeHealth);
+            }
+            else
+            {
+                StartForeground(NotificationId, notification);
+            }
+
+            InitializeSensor();
+            return StartCommandResult.Sticky;
         }
-
-        InitializeSensor();
-        return StartCommandResult.Sticky;
+        catch (Exception ex)
+        {
+            Logger.Log("StepForegroundService OnStartCommand failed; stopping service safely", ex);
+            try { StopSelf(); } catch { }
+            return StartCommandResult.NotSticky;
+        }
     }
 
     private void InitializeSensor()
@@ -54,11 +59,11 @@ public class StepForegroundService : Service, ISensorEventListener
 
         if (_stepCounterSensor != null)
         {
+            _sensorManager?.UnregisterListener(this);
             _sensorManager?.RegisterListener(this, _stepCounterSensor, SensorDelay.Normal);
         }
     }
 
-    // Correct Android Sensor Event Listener signature
     public void OnSensorChanged(SensorEvent? e)
     {
         if (e == null || e.Values == null || e.Values.Count == 0) return;
@@ -70,36 +75,31 @@ public class StepForegroundService : Service, ISensorEventListener
         int dailySteps = Microsoft.Maui.Storage.Preferences.Default.Get("SavedDailySteps", 0);
         int lastHardware = Microsoft.Maui.Storage.Preferences.Default.Get("LastHardwareSteps", -1);
 
-        // 1. Handle day rollover (New Day)
         if (lastSavedDate != today)
         {
             Microsoft.Maui.Storage.Preferences.Default.Set("SavedStepDate", today);
             dailySteps = 0;
             lastHardware = totalHardwareSteps;
         }
-        // 2. Handle first run initialization
         else if (lastHardware == -1)
         {
             lastHardware = totalHardwareSteps;
         }
-        // 3. Handle Phone Reboot / Sensor Reset (Hardware counter dropped to 0 or lower)
         else if (totalHardwareSteps < lastHardware)
         {
-            // The phone restarted! The hardware counter reset, but our previous dailySteps 
-            // are already safely saved. We add the new steps walked since the reboot.
             dailySteps += totalHardwareSteps;
+            lastHardware = totalHardwareSteps;
         }
-        // 4. Normal incremental movement
         else
         {
             int diff = totalHardwareSteps - lastHardware;
             dailySteps += diff;
+            lastHardware = totalHardwareSteps;
         }
 
-        // Persist everything securely
         Microsoft.Maui.Storage.Preferences.Default.Set("SavedDailySteps", dailySteps);
-        Microsoft.Maui.Storage.Preferences.Default.Set($"Steps_{DateTime.Today:yyyy-MM-dd}", dailySteps);
-        Microsoft.Maui.Storage.Preferences.Default.Set("LastHardwareSteps", totalHardwareSteps);
+        Microsoft.Maui.Storage.Preferences.Default.Set($"Steps_{today}", dailySteps);
+        Microsoft.Maui.Storage.Preferences.Default.Set("LastHardwareSteps", lastHardware);
         Microsoft.Maui.Storage.Preferences.Default.Set("SavedAccumulativeSteps", totalHardwareSteps);
 
         UpdateNotification($"Steps today: {dailySteps:N0}");
@@ -119,7 +119,7 @@ public class StepForegroundService : Service, ISensorEventListener
 
     private Notification BuildNotification(string message)
     {
-        var intent = PackageManager?.GetLaunchIntentForPackage(PackageName ?? "");
+        var intent = PackageManager?.GetLaunchIntentForPackage(PackageName ?? string.Empty);
         var pendingIntent = PendingIntent.GetActivity(
             this, 0, intent, PendingIntentFlags.UpdateCurrent | PendingIntentFlags.Immutable);
 

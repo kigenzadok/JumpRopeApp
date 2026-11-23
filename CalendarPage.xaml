@@ -17,9 +17,9 @@
                     <Label Text="📅 Select Filter Date" FontSize="13" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#64748B, Dark=#94A3B8}" />
 
                     <Border BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}" StrokeShape="RoundRectangle 12" Padding="12,4">
-                        <DatePicker x:Name="WorkoutDatePicker" 
+                        <DatePicker x:Name="WorkoutDatePicker"
                                     DateSelected="OnDateSelected"
-                                    Format="D" 
+                                    Format="D"
                                     TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}"
                                     HorizontalOptions="Fill" />
                     </Border>
@@ -34,25 +34,32 @@
                 <VerticalStackLayout Spacing="12">
                     <Label x:Name="MonthSummaryTitleLabel" Text="📊 Summary" FontSize="15" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
 
-                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="10">
-                        <Border Grid.Column="0" BackgroundColor="{AppThemeBinding Light=#F1F5F9, Dark=#0F172A}" StrokeShape="RoundRectangle 14" Padding="10">
+                    <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="8">
+                        <Border BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}" StrokeShape="RoundRectangle 12" Padding="8">
                             <VerticalStackLayout Spacing="2">
                                 <Label Text="JUMPS" FontSize="9" FontAttributes="Bold" TextColor="#6366F1" HorizontalOptions="Center" />
-                                <Label x:Name="MonthlyJumpsLabel" Text="0" FontSize="15" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" HorizontalOptions="Center" />
+                                <Label x:Name="MonthJumpsLabel" Text="0" FontSize="15" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" HorizontalOptions="Center" />
                             </VerticalStackLayout>
                         </Border>
 
-                        <Border Grid.Column="1" BackgroundColor="{AppThemeBinding Light=#F1F5F9, Dark=#0F172A}" StrokeShape="RoundRectangle 14" Padding="10">
+                        <Border Grid.Column="1" BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}" StrokeShape="RoundRectangle 12" Padding="8">
+                            <VerticalStackLayout Spacing="2">
+                                <Label Text="STEPS" FontSize="9" FontAttributes="Bold" TextColor="#10B981" HorizontalOptions="Center" />
+                                <Label x:Name="MonthStepsLabel" Text="0" FontSize="15" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" HorizontalOptions="Center" />
+                            </VerticalStackLayout>
+                        </Border>
+
+                        <Border Grid.Column="2" BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}" StrokeShape="RoundRectangle 12" Padding="8">
                             <VerticalStackLayout Spacing="2">
                                 <Label Text="TIME" FontSize="9" FontAttributes="Bold" TextColor="#F59E0B" HorizontalOptions="Center" />
-                                <Label x:Name="MonthlyTimeLabel" Text="0m" FontSize="15" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" HorizontalOptions="Center" />
+                                <Label x:Name="MonthTimeLabel" Text="0m 0s" FontSize="15" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" HorizontalOptions="Center" />
                             </VerticalStackLayout>
                         </Border>
 
-                        <Border Grid.Column="2" BackgroundColor="{AppThemeBinding Light=#F1F5F9, Dark=#0F172A}" StrokeShape="RoundRectangle 14" Padding="10">
+                        <Border Grid.Column="3" BackgroundColor="{AppThemeBinding Light=#F8FAFC, Dark=#0F172A}" Stroke="{AppThemeBinding Light=#E2E8F0, Dark=#334155}" StrokeShape="RoundRectangle 12" Padding="8">
                             <VerticalStackLayout Spacing="2">
                                 <Label Text="CALORIES" FontSize="9" FontAttributes="Bold" TextColor="#EF4444" HorizontalOptions="Center" />
-                                <Label x:Name="MonthlyCaloriesLabel" Text="0 kcal" FontSize="15" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" HorizontalOptions="Center" />
+                                <Label x:Name="MonthCaloriesLabel" Text="0 kcal" FontSize="15" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" HorizontalOptions="Center" />
                             </VerticalStackLayout>
                         </Border>
                     </Grid>
@@ -65,7 +72,10 @@
                     StrokeThickness="1"
                     StrokeShape="RoundRectangle 24" Padding="18">
                 <VerticalStackLayout Spacing="12">
-                    <Label x:Name="SelectedDayHeaderLabel" Text="Selected Day Logs" FontSize="15" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
+                    <VerticalStackLayout Spacing="4">
+                        <Label x:Name="SelectedDayHeaderLabel" Text="Selected Day Logs" FontSize="15" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#0F172A, Dark=#F8FAFC}" />
+                        <Label x:Name="SelectedDateStepsLabel" Text="Steps for selected date: 0" FontSize="12" FontAttributes="Bold" TextColor="#10B981" />
+                    </VerticalStackLayout>
 
                     <CollectionView x:Name="DayWorkoutsCollectionView" EmptyView="No workout sessions recorded for this date.">
                         <CollectionView.ItemTemplate>
