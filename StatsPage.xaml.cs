@@ -18,6 +18,7 @@ public partial class StatsPage : ContentPage
 
     private UserProfile _profile = new();
     private bool _hasExistingProfile = false;
+    private bool _isLoading = false;
 
     public StatsPage()
     {
@@ -29,6 +30,9 @@ public partial class StatsPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        if (_isLoading) return;
+        _isLoading = true;
+
         Logger.Log("Navigated to StatsPage - Starting OnAppearing");
 
         try
@@ -42,7 +46,11 @@ public partial class StatsPage : ContentPage
         catch (Exception ex)
         {
             Logger.Log("CRASH DETECTED IN STATSPAGE OnAppearing", ex);
-            await DisplayAlert("Crash Diagnostic Captured", $"{ex.Message}\n\nCheck logs via Lifetime Overview.", "OK");
+            await DisplayAlertAsync("Crash Diagnostic Captured", $"{ex.Message}\n\nCheck logs via Lifetime Overview.", "OK");
+        }
+        finally
+        {
+            _isLoading = false;
         }
     }
 
@@ -196,6 +204,7 @@ public partial class StatsPage : ContentPage
                 ? weeklyJumps.Select(d => (d.DayName, d.Jumps)).ToList()
                 : new();
 
+            var workoutsList = await _dbService.GetWorkoutsAsync() ?? new();
             DateTime today = DateTime.Today;
             var stepDataList = new List<(string DayName, int Steps)>();
 
@@ -217,7 +226,14 @@ public partial class StatsPage : ContentPage
                                 .Equals(item.DayName, StringComparison.OrdinalIgnoreCase))
                             {
                                 string dateKey = $"Steps_{pastDate:yyyy-MM-dd}";
-                                steps = Preferences.Default.Get(dateKey, 0);
+                                int prefSteps = Preferences.Default.Get(dateKey, 0);
+                                int dbSteps = workoutsList
+                                    .Where(w => w.Date.Date == pastDate.Date)
+                                    .Select(w => w.DailySteps)
+                                    .DefaultIfEmpty(0)
+                                    .Max();
+
+                                steps = Math.Max(prefSteps, dbSteps);
                                 break;
                             }
                         }
@@ -257,7 +273,7 @@ public partial class StatsPage : ContentPage
         {
             canvas.FillColor = Colors.Transparent;
             canvas.FillRectangle(dirtyRect);
-            if (Data == null || !Data.Any()) return;
+            if (Data == null || !Data.Any() || dirtyRect.Width <= 0 || dirtyRect.Height <= 30) return;
 
             float width = dirtyRect.Width;
             float height = dirtyRect.Height;
@@ -288,46 +304,72 @@ public partial class StatsPage : ContentPage
                 canvas.DrawString(item.DayName, x - 4, height - 18, barWidth + 8, 15, HorizontalAlignment.Center, VerticalAlignment.Center);
             }
         }
-
     }
-        public class StepsChartDrawable : IDrawable
+
+    public class StepsChartDrawable : IDrawable
+    {
+        public List<(string DayName, int Steps)> Data { get; set; } = new();
+
+        public void Draw(ICanvas canvas, RectF dirtyRect)
         {
-            public List<(string DayName, int Steps)> Data { get; set; } = new();
+            canvas.FillColor = Colors.Transparent;
+            canvas.FillRectangle(dirtyRect);
+            if (Data == null || !Data.Any() || dirtyRect.Width <= 0 || dirtyRect.Height <= 30) return;
 
-            public void Draw(ICanvas canvas, RectF dirtyRect)
+            float width = dirtyRect.Width;
+            float height = dirtyRect.Height;
+            int count = Data.Count;
+            float spacing = 8;
+            float barWidth = Math.Max(6, (width - (spacing * (count + 1))) / count);
+            float usableHeight = height - 25;
+
+            canvas.StrokeColor = Color.FromRgba(150, 150, 150, 25);
+            canvas.StrokeSize = 1;
+            canvas.DrawLine(0, 5, width, 5);
+            canvas.DrawLine(0, usableHeight / 2, width, usableHeight / 2);
+            canvas.DrawLine(0, usableHeight, width, usableHeight);
+
+            for (int i = 0; i < count; i++)
             {
-                canvas.FillColor = Colors.Transparent;
-                canvas.FillRectangle(dirtyRect);
-                if (Data == null || !Data.Any()) return;
+                var item = Data[i];
+                float x = spacing + i * (barWidth + spacing);
+                float barHeight = usableHeight * Math.Clamp((float)item.Steps / 10000f, 0.04f, 1.0f);
+                float y = usableHeight - barHeight;
 
-                float width = dirtyRect.Width;
-                float height = dirtyRect.Height;
-                int count = Data.Count;
-                float spacing = 8;
-                float barWidth = Math.Max(6, (width - (spacing * (count + 1))) / count);
-                float usableHeight = height - 25;
+                canvas.FillColor = Color.FromArgb("#10B981");
+                canvas.FillRoundedRectangle(x, y, barWidth, barHeight, barWidth / 2);
 
-                canvas.StrokeColor = Color.FromRgba(150, 150, 150, 25);
-                canvas.StrokeSize = 1;
-                canvas.DrawLine(0, 5, width, 5);
-                canvas.DrawLine(0, usableHeight / 2, width, usableHeight / 2);
-                canvas.DrawLine(0, usableHeight, width, usableHeight);
-
-                for (int i = 0; i < count; i++)
-                {
-                    var item = Data[i];
-                    float x = spacing + i * (barWidth + spacing);
-                    float barHeight = usableHeight * Math.Clamp((float)item.Steps / 10000f, 0.04f, 1.0f);
-                    float y = usableHeight - barHeight;
-
-                    canvas.FillColor = Color.FromArgb("#10B981");
-                    canvas.FillRoundedRectangle(x, y, barWidth, barHeight, barWidth / 2);
-
-                    canvas.FontColor = Color.FromArgb("#94A3B8");
-                    canvas.FontSize = 9;
-                    canvas.DrawString(item.DayName, x - 4, height - 18, barWidth + 8, 15, HorizontalAlignment.Center, VerticalAlignment.Center);
-                }
+                canvas.FontColor = Color.FromArgb("#94A3B8");
+                canvas.FontSize = 9;
+                canvas.DrawString(item.DayName, x - 4, height - 18, barWidth + 8, 15, HorizontalAlignment.Center, VerticalAlignment.Center);
             }
         }
-    
+    }
+    public async void OnViewLogsClicked(object? sender, EventArgs e)
+    {
+        try
+        {
+            string logs = Logger.GetLogContent();
+            if (string.IsNullOrWhiteSpace(logs))
+            {
+                logs = "No diagnostic logs recorded yet.";
+            }
+
+            string preview = logs.Length > 1500 ? logs[^1500..] : logs;
+            bool share = await DisplayAlertAsync("Diagnostic Logs", preview, "Share Log", "Close");
+
+            if (share && !string.IsNullOrWhiteSpace(Logger.LogFilePath) && File.Exists(Logger.LogFilePath))
+            {
+                await Share.Default.RequestAsync(new ShareFileRequest
+                {
+                    Title = "App Diagnostics Log",
+                    File = new ShareFile(Logger.LogFilePath)
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"View Logs error: {ex.Message}");
+        }
+    }
 }

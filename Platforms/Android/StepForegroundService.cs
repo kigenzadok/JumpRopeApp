@@ -12,6 +12,7 @@ namespace JumpRopeApp.Platforms.Android;
     Enabled = true,
     Exported = false,
     ForegroundServiceType = global::Android.Content.PM.ForegroundService.TypeHealth)]
+
 public class StepForegroundService : Service, ISensorEventListener
 {
     public const int NotificationId = 1001;
@@ -23,7 +24,8 @@ public class StepForegroundService : Service, ISensorEventListener
     private const string KeySavedDate = "SavedStepDate";
 
     public override IBinder? OnBind(Intent? intent) => null;
-
+    string todayKey = $"Steps_{DateTime.Today:yyyy-MM-dd}";
+ 
     public override StartCommandResult OnStartCommand(Intent? intent, StartCommandFlags flags, int startId)
     {
         CreateNotificationChannel();
@@ -96,6 +98,7 @@ public class StepForegroundService : Service, ISensorEventListener
 
         // Persist everything securely
         Microsoft.Maui.Storage.Preferences.Default.Set("SavedDailySteps", dailySteps);
+        Microsoft.Maui.Storage.Preferences.Default.Set($"Steps_{DateTime.Today:yyyy-MM-dd}", dailySteps);
         Microsoft.Maui.Storage.Preferences.Default.Set("LastHardwareSteps", totalHardwareSteps);
         Microsoft.Maui.Storage.Preferences.Default.Set("SavedAccumulativeSteps", totalHardwareSteps);
 

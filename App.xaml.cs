@@ -15,7 +15,8 @@ public partial class App : Application
     private const string StepCountKey = "SavedDailySteps";
     private const string StepDateKey = "SavedStepDate";
     public static int AccumulativeStepCount { get; private set; } = 0;
-
+    string todayKey = $"Steps_{DateTime.Today:yyyy-MM-dd}";
+    
     public static void NotifyStepUpdate(int daily, int accumulative)
     {
         DailyStepCount = daily;

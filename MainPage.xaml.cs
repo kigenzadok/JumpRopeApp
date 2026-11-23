@@ -36,7 +36,8 @@ public partial class MainPage : ContentPage
     private int _secondsRemaining = 30;
     private int _totalWorkoutSeconds = 0;
     private int _jumpCount = 0;
-
+    string todayKey = $"Steps_{DateTime.Today:yyyy-MM-dd}";
+    
     public MainPage()
     {
         InitializeComponent();
