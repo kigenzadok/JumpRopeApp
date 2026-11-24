@@ -345,15 +345,43 @@ public partial class StatsPage : ContentPage
             }
         }
     }
+    public async void OnExportCsvClicked(object? sender, EventArgs e)
+    {
+        try
+        {
+            var workouts = await _dbService.GetWorkoutsAsync() ?? new();
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("Date,WorkoutType,TotalJumps,DailySteps,SetsCompleted,DurationSeconds,CaloriesBurned");
+
+            foreach (var w in workouts.OrderByDescending(x => x.Date))
+            {
+                string safeType = $"\"{w.WorkoutType?.Replace("\"", "\"\"") ?? string.Empty}\"";
+                sb.AppendLine($"{w.Date:yyyy-MM-dd HH:mm:ss},{safeType},{w.TotalJumps},{w.DailySteps},{w.SetsCompleted},{w.DurationSeconds},{w.CaloriesBurned}");
+            }
+
+            string filePath = Path.Combine(FileSystem.CacheDirectory, $"JumpRopeStats_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
+            await File.WriteAllTextAsync(filePath, sb.ToString());
+
+            await Share.Default.RequestAsync(new ShareFileRequest
+            {
+                Title = "Export Workout CSV",
+                File = new ShareFile(filePath)
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger.Log("Error exporting CSV on StatsPage", ex);
+            await DisplayAlertAsync("Export Failed", ex.Message, "OK");
+        }
+    }
+
     public async void OnViewLogsClicked(object? sender, EventArgs e)
     {
         try
         {
             string logs = Logger.GetLogContent();
             if (string.IsNullOrWhiteSpace(logs))
-            {
                 logs = "No diagnostic logs recorded yet.";
-            }
 
             string preview = logs.Length > 1500 ? logs[^1500..] : logs;
             bool share = await DisplayAlertAsync("Diagnostic Logs", preview, "Share Log", "Close");
@@ -369,7 +397,35 @@ public partial class StatsPage : ContentPage
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"View Logs error: {ex.Message}");
+            Logger.Log("Error viewing logs on StatsPage", ex);
+        }
+    }
+
+    public async void OnResetStatsClicked(object? sender, EventArgs e)
+    {
+        bool confirm = await DisplayAlertAsync("Reset Stats", "Clear all saved workout history and step counters?", "Reset", "Cancel");
+        if (!confirm) return;
+
+        try
+        {
+            var workouts = await _dbService.GetWorkoutsAsync() ?? new();
+            foreach (var w in workouts)
+            {
+                await _dbService.DeleteWorkoutAsync(w);
+            }
+
+            Preferences.Default.Remove("SavedDailySteps");
+            Preferences.Default.Remove("SavedAccumulativeSteps");
+            Preferences.Default.Remove("LastHardwareSteps");
+
+            await LoadStatsAsync();
+            await LoadPersonalRecordsAsync();
+            await LoadChartDataAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.Log("Error resetting stats on StatsPage", ex);
+            await DisplayAlertAsync("Reset Failed", ex.Message, "OK");
         }
     }
 }
